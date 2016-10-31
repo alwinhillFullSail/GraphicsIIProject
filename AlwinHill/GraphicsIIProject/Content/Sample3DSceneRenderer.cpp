@@ -58,7 +58,7 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources(void)
 	static const XMVECTORF32 eye = { 0.0f, 0.7f, -1.5f, 0.0f };
 	static const XMVECTORF32 at = { 0.0f, -0.1f, 0.0f, 0.0f };
 	static const XMVECTORF32 up = { 0.0f, 1.0f, 0.0f, 0.0f };
-	
+
 	XMStoreFloat4x4(&m_camera, XMMatrixInverse(nullptr, XMMatrixLookAtLH(eye, at, up)));
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
 }
@@ -122,20 +122,20 @@ void Sample3DSceneRenderer::UpdateCamera(DX::StepTimer const& timer, float const
 	}
 	if (m_kbuttons['X'])
 	{
-		XMMATRIX translation = XMMatrixTranslation( 0.0f, -moveSpd * delta_time, 0.0f);
+		XMMATRIX translation = XMMatrixTranslation(0.0f, -moveSpd * delta_time, 0.0f);
 		XMMATRIX temp_camera = XMLoadFloat4x4(&m_camera);
 		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
 		XMStoreFloat4x4(&m_camera, result);
 	}
 	if (m_kbuttons[VK_SPACE])
 	{
-		XMMATRIX translation = XMMatrixTranslation( 0.0f, moveSpd * delta_time, 0.0f);
+		XMMATRIX translation = XMMatrixTranslation(0.0f, moveSpd * delta_time, 0.0f);
 		XMMATRIX temp_camera = XMLoadFloat4x4(&m_camera);
 		XMMATRIX result = XMMatrixMultiply(translation, temp_camera);
 		XMStoreFloat4x4(&m_camera, result);
 	}
 
-	if (m_currMousePos) 
+	if (m_currMousePos)
 	{
 		if (m_currMousePos->Properties->IsRightButtonPressed && m_prevMousePos)
 		{
@@ -269,24 +269,143 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	// Once both shaders are loaded, create the mesh.
 	auto createCubeTask = (createPSTask && createVSTask).then([this]()
 	{
-		// Load mesh vertices. Each vertex has a position and a color.
-		static const VertexPositionColor cubeVertices[] =
+		srand(time(NULL));
+
+		const char *path;
+		std::vector<unsigned short> outVertices;
+		std::vector<XMFLOAT4> outUV;
+		std::vector<XMFLOAT4> outNormals;
+
+		std::vector<unsigned int> vertIndices, uvIndices, normalIndices;
+		std::vector<XMFLOAT3> temp_verts;
+		std::vector<XMFLOAT4> temp_uv;
+		std::vector<XMFLOAT4> temp_normal;
+		char readStream[128];
+		std::string str;
+
+		//path = "testpyramid.obj";
+		path = "wolf.obj";
+
+		std::ifstream file;
+		file.open(path);
+		while (!file.eof())
 		{
-			{XMFLOAT3(-0.5f, -0.5f, -0.5f), XMFLOAT3(0.0f, 0.0f, 0.0f)},
-			{XMFLOAT3(-0.5f, -0.5f,  0.5f), XMFLOAT3(0.0f, 0.0f, 1.0f)},
-			{XMFLOAT3(-0.5f,  0.5f, -0.5f), XMFLOAT3(0.0f, 1.0f, 0.0f)},
-			{XMFLOAT3(-0.5f,  0.5f,  0.5f), XMFLOAT3(0.0f, 1.0f, 1.0f)},
-			{XMFLOAT3( 0.5f, -0.5f, -0.5f), XMFLOAT3(1.0f, 0.0f, 0.0f)},
-			{XMFLOAT3( 0.5f, -0.5f,  0.5f), XMFLOAT3(1.0f, 0.0f, 1.0f)},
-			{XMFLOAT3( 0.5f,  0.5f, -0.5f), XMFLOAT3(1.0f, 1.0f, 0.0f)},
-			{XMFLOAT3( 0.5f,  0.5f,  0.5f), XMFLOAT3(1.0f, 1.0f, 1.0f)},
-		};
+			file >> readStream;
+
+			if (readStream[0] == 'v' && readStream[1] != 't' && readStream[1] != 'n')
+			{
+				XMFLOAT3 vertex;
+				file >> vertex.x >> vertex.y >> vertex.z;
+				temp_verts.push_back(vertex);
+				float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+				float s = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+				float t = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+
+				XMFLOAT3 color(r, s, t);
+				temp_verts.push_back(color);
+			}
+
+			else if (readStream[0] == 'v' && readStream[1] == 'n')
+			{
+				XMFLOAT4 normal;
+				file >> normal.x >> normal.y >> normal.z;
+				temp_normal.push_back(normal);
+			}
+
+			else if (readStream[0] == 'v' && readStream[1] == 't')
+			{
+				XMFLOAT4 uv;
+				file >> uv.x >> uv.y;
+				temp_uv.push_back(uv);
+			}
+
+			else if (readStream[0] == 'f')
+			{
+				int ndx = 0;
+				std::string entireLine;
+				char delimiter = '/';
+				char del = '\n';
+				unsigned int vertexIndex[3], uvIndex[3], normalIndex[3];
+				std::getline(file, entireLine, del);
+				std::stringstream ss(entireLine);
+
+				while (!ss.eof())
+				{
+					std::getline(ss, str, delimiter);
+					vertexIndex[ndx] = stoi(str);
+					vertIndices.push_back(vertexIndex[ndx]);
+
+					std::getline(ss, str, delimiter);
+					uvIndex[ndx] = stoi(str);
+					uvIndices.push_back(vertexIndex[ndx]);
+
+					std::getline(ss, str, ' ');
+					normalIndex[ndx] = stoi(str);
+					normalIndices.push_back(vertexIndex[ndx]);
+
+					++ndx;
+				}
+			}
+		}
+		file.close();
+
+		//unsigned int *(vIndices) = new unsigned int[vertIndices.size() + 1];
+		outVertices.resize(vertIndices.size());
+		for (unsigned int i = 0; i < vertIndices.size(); i++)
+		{
+			unsigned int vIndex = vertIndices[i];
+			unsigned int vertex = vIndex - 1;
+			outVertices[i] = vertex;
+		}
+
+		//int j = 0;
+		//int size = temp_verts.size() * 0.5;
+		//VertexPositionColor objVerts[16];
+		////pyramidV = new  VertexPositionColor[size];
+		//for (size_t i = 0; i < (temp_verts.size() * 0.5); i++)
+		//{
+		//	objVerts[i] = { temp_verts[j], temp_verts[++j] };
+		//	++j;
+		//}
+
+		std::vector<XMFLOAT3> objectVertices;
+		for (size_t i = 0; i < (temp_verts.size()); i++)
+		{
+			objectVertices.push_back(temp_verts[i]);
+		}
+
+		/*for (unsigned int i = 0; i < uvIndices.size(); i++)
+		{
+		unsigned int uvIndex = uvIndices[i];
+		XMFLOAT4 uv = temp_uv[uvIndex - 1];
+		outUV.push_back(uv);
+		}
+		for (unsigned int i = 0; i < normalIndices.size(); i++)
+		{
+		unsigned int normalIndex = normalIndices[i];
+		XMFLOAT4 normal = temp_normal[normalIndex - 1];
+		outNormals.push_back(normal);
+		}*/
+
+		/*unsigned int objIndices[16];
+		int index = 0;
+		for (size_t i = 0; i < outVertices.size(); i++)
+		{
+		objIndices[index] = outVertices[i].x;
+		index++;
+		objIndices[index] = outVertices[i].y;
+		index++;
+		objIndices[index] = outVertices[i].z;
+		index++;
+
+		}*/
 
 		D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
-		vertexBufferData.pSysMem = cubeVertices;
+		vertexBufferData.pSysMem = objectVertices.data();
+
 		vertexBufferData.SysMemPitch = 0;
 		vertexBufferData.SysMemSlicePitch = 0;
-		CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(cubeVertices), D3D11_BIND_VERTEX_BUFFER);
+		CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(XMFLOAT3) * objectVertices.size(), D3D11_BIND_VERTEX_BUFFER);
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&vertexBufferDesc, &vertexBufferData, &m_vertexBuffer));
 
 		// Load mesh indices. Each trio of indices represents
@@ -315,13 +434,12 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 			1,5,7,
 		};
 
-		m_indexCount = ARRAYSIZE(cubeIndices);
-
+		m_indexCount = outVertices.size();
 		D3D11_SUBRESOURCE_DATA indexBufferData = { 0 };
-		indexBufferData.pSysMem = cubeIndices;
+		indexBufferData.pSysMem = outVertices.data();
 		indexBufferData.SysMemPitch = 0;
 		indexBufferData.SysMemSlicePitch = 0;
-		CD3D11_BUFFER_DESC indexBufferDesc(sizeof(cubeIndices), D3D11_BIND_INDEX_BUFFER);
+		CD3D11_BUFFER_DESC indexBufferDesc(sizeof(unsigned short) * outVertices.size(), D3D11_BIND_INDEX_BUFFER);
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&indexBufferDesc, &indexBufferData, &m_indexBuffer));
 	});
 

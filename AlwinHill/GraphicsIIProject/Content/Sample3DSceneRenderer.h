@@ -3,7 +3,9 @@
 #include "..\Common\DeviceResources.h"
 #include "ShaderStructures.h"
 #include "..\Common\StepTimer.h"
-
+#include <vector>
+#include <fstream>
+#include <sstream>
 
 namespace DX11UWA
 {

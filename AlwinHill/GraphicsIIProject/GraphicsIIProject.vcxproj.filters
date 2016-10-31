@@ -46,6 +46,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="GraphicsIIProject_TemporaryKey.pfx" />
+    <None Include="testpyramid.obj" />
+    <None Include="wolf.obj" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Common\DDSTextureLoader.cpp">
