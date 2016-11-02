@@ -23,6 +23,7 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 
 	CreateDeviceDependentResources();
 	CreateWindowSizeDependentResources();
+
 }
 
 // Initializes view parameters when the window size changes.
@@ -163,8 +164,6 @@ void Sample3DSceneRenderer::UpdateCamera(DX::StepTimer const& timer, float const
 		}
 		m_prevMousePos = m_currMousePos;
 	}
-
-
 }
 
 void Sample3DSceneRenderer::SetKeyboardButtons(const char* list)
@@ -216,6 +215,22 @@ void Sample3DSceneRenderer::Render(void)
 
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
 
+	//Loading textures
+	ID3D11ShaderResourceView *texViews[] = { modelView };
+	D3D11_SAMPLER_DESC samplerDesc;
+	samplerDesc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT; // bilinear
+	samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDesc.MaxAnisotropy = 1.0f;
+	samplerDesc.MipLODBias = 1.0f;
+
+	ID3D11SamplerState *samplerS;
+
+	m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc, &samplerS);
+
+	context->PSSetSamplers(0, 1, &samplerS);
+	context->PSSetShaderResources(0, 1, texViews);
 
 	// Prepare the constant buffer to send it to the graphics device.
 	context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
@@ -271,20 +286,31 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	{
 		srand(time(NULL));
 
+		//DDS Loader
+		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"Diffuse_Knight_Cleansed.dds", (ID3D11Resource**)&modelTexture, &modelView);
+		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"BStrongoli_D_Sword.dds", (ID3D11Resource**)&modelTexture, &modelView);
+		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"dragonknight_hr-wind.dds", (ID3D11Resource**)&modelTexture, &modelView);
+		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"succubus-fire.dds", (ID3D11Resource**)&modelTexture, &modelView);
+
+
+		//Loading .OBJ model
 		const char *path;
 		std::vector<unsigned short> outVertices;
-		std::vector<XMFLOAT4> outUV;
-		std::vector<XMFLOAT4> outNormals;
+		std::vector<unsigned short> outUV;
+		std::vector<unsigned short> outNormals;
 
 		std::vector<unsigned int> vertIndices, uvIndices, normalIndices;
 		std::vector<XMFLOAT3> temp_verts;
-		std::vector<XMFLOAT4> temp_uv;
-		std::vector<XMFLOAT4> temp_normal;
+		std::vector<XMFLOAT3> temp_uv;
+		std::vector<XMFLOAT3> temp_normal;
 		char readStream[128];
 		std::string str;
 
 		//path = "testpyramid.obj";
-		path = "wolf.obj";
+		//path = "dragonknight_hr-wind.obj";
+		//path = "swords.obj";
+		path = "succubus-fire.obj";
+
 
 		std::ifstream file;
 		file.open(path);
@@ -292,30 +318,32 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		{
 			file >> readStream;
 
-			if (readStream[0] == 'v' && readStream[1] != 't' && readStream[1] != 'n')
+			if (readStream[0] == 'v' && readStream[1] == '\0' /*&& readStream[1] != 'n'*/)
 			{
 				XMFLOAT3 vertex;
 				file >> vertex.x >> vertex.y >> vertex.z;
-				temp_verts.push_back(vertex);
-				float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-				float s = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-				float t = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+				vertex.x /= 100;
+				vertex.y /= 100;
+				vertex.z /= 100;
 
-				XMFLOAT3 color(r, s, t);
-				temp_verts.push_back(color);
+				temp_verts.push_back(vertex);
+				
+				/*XMFLOAT3 color(0.5, 0.5, 0.5);
+				temp_verts.push_back(color);*/
 			}
 
 			else if (readStream[0] == 'v' && readStream[1] == 'n')
 			{
-				XMFLOAT4 normal;
+				XMFLOAT3 normal;
 				file >> normal.x >> normal.y >> normal.z;
 				temp_normal.push_back(normal);
 			}
 
 			else if (readStream[0] == 'v' && readStream[1] == 't')
 			{
-				XMFLOAT4 uv;
+				XMFLOAT3 uv;
 				file >> uv.x >> uv.y;
+				uv.y = 1 - uv.y;
 				temp_uv.push_back(uv);
 			}
 
@@ -349,60 +377,31 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		}
 		file.close();
 
-		//unsigned int *(vIndices) = new unsigned int[vertIndices.size() + 1];
-		outVertices.resize(vertIndices.size());
+		//outVertices.resize(vertIndices.size());
 		for (unsigned int i = 0; i < vertIndices.size(); i++)
 		{
 			unsigned int vIndex = vertIndices[i];
 			unsigned int vertex = vIndex - 1;
-			outVertices[i] = vertex;
-		}
+			outVertices.push_back(vertex);
 
-		//int j = 0;
-		//int size = temp_verts.size() * 0.5;
-		//VertexPositionColor objVerts[16];
-		////pyramidV = new  VertexPositionColor[size];
-		//for (size_t i = 0; i < (temp_verts.size() * 0.5); i++)
-		//{
-		//	objVerts[i] = { temp_verts[j], temp_verts[++j] };
-		//	++j;
-		//}
+			unsigned int uvIndex = uvIndices[i];
+			unsigned int uv = uvIndex - 1;
+			outUV.push_back(uv);
+
+			unsigned int normalIndex = normalIndices[i];
+			unsigned int normal = normalIndex - 1;
+			outNormals.push_back(normal);
+		}
 
 		std::vector<XMFLOAT3> objectVertices;
 		for (size_t i = 0; i < (temp_verts.size()); i++)
 		{
 			objectVertices.push_back(temp_verts[i]);
+			objectVertices.push_back(temp_uv[i]);
 		}
-
-		/*for (unsigned int i = 0; i < uvIndices.size(); i++)
-		{
-		unsigned int uvIndex = uvIndices[i];
-		XMFLOAT4 uv = temp_uv[uvIndex - 1];
-		outUV.push_back(uv);
-		}
-		for (unsigned int i = 0; i < normalIndices.size(); i++)
-		{
-		unsigned int normalIndex = normalIndices[i];
-		XMFLOAT4 normal = temp_normal[normalIndex - 1];
-		outNormals.push_back(normal);
-		}*/
-
-		/*unsigned int objIndices[16];
-		int index = 0;
-		for (size_t i = 0; i < outVertices.size(); i++)
-		{
-		objIndices[index] = outVertices[i].x;
-		index++;
-		objIndices[index] = outVertices[i].y;
-		index++;
-		objIndices[index] = outVertices[i].z;
-		index++;
-
-		}*/
 
 		D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
 		vertexBufferData.pSysMem = objectVertices.data();
-
 		vertexBufferData.SysMemPitch = 0;
 		vertexBufferData.SysMemSlicePitch = 0;
 		CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(XMFLOAT3) * objectVertices.size(), D3D11_BIND_VERTEX_BUFFER);

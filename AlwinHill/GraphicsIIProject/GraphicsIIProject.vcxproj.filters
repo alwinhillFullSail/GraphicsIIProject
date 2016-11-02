@@ -40,6 +40,21 @@
     <Image Include="Assets\StoreLogo.png">
       <Filter>Assets</Filter>
     </Image>
+    <Image Include="Diffuse_Knight_Cleansed.dds">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="BStrongoli_D_Sword.dds">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="TwoSwords.dds">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="dragonknight_hr-wind.dds">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="succubus-fire.dds">
+      <Filter>Assets</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -47,7 +62,10 @@
   <ItemGroup>
     <None Include="GraphicsIIProject_TemporaryKey.pfx" />
     <None Include="testpyramid.obj" />
-    <None Include="wolf.obj" />
+    <None Include="alien.obj" />
+    <None Include="dragonknight.obj" />
+    <None Include="dragonknight_hr-wind.obj" />
+    <None Include="succubus-fire.obj" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Common\DDSTextureLoader.cpp">
@@ -65,6 +83,9 @@
     <ClCompile Include="App.cpp" />
     <ClCompile Include="DX11UWAMain.cpp" />
     <ClCompile Include="pch.cpp" />
+    <ClCompile Include="Content\CubeRenderer.cpp">
+      <Filter>Content</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common\DDSTextureLoader.h">
@@ -91,5 +112,9 @@
     <ClInclude Include="App.h" />
     <ClInclude Include="DX11UWAMain.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Diffuse_Knight_Cleansed.h" />
+    <ClInclude Include="Content\CubeRenderer.h">
+      <Filter>Content</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

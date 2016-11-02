@@ -6,6 +6,9 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <atlbase.h>
+#include "Diffuse_Knight_Cleansed.h"
+#include "Common\DDSTextureLoader.h"
 
 namespace DX11UWA
 {
@@ -29,6 +32,9 @@ namespace DX11UWA
 		void SetMousePosition(const Windows::UI::Input::PointerPoint^ pos);
 		void SetInputDeviceData(const char* kb, const Windows::UI::Input::PointerPoint^ pos);
 
+		CComPtr<ID3D11Texture2D> diffuseTexture;
+		CComPtr<ID3D11Texture2D> modelTexture;
+		CComPtr<ID3D11ShaderResourceView> modelView;
 
 	private:
 		void Rotate(float radians);
