@@ -16,7 +16,7 @@ DX11UWAMain::DX11UWAMain(const std::shared_ptr<DX::DeviceResources>& deviceResou
 
 	// TODO: Replace this with your app's content initialization.
 	m_sceneRenderer = std::unique_ptr<Sample3DSceneRenderer>(new Sample3DSceneRenderer(m_deviceResources));
-	m_cubeRenderer = std::unique_ptr<CubeRenderer>(new CubeRenderer(m_deviceResources));
+	//m_cubeRenderer = std::unique_ptr<CubeRenderer>(new CubeRenderer(m_deviceResources));
 
 	m_fpsTextRenderer = std::unique_ptr<SampleFpsTextRenderer>(new SampleFpsTextRenderer(m_deviceResources));
 
@@ -39,7 +39,7 @@ void DX11UWAMain::CreateWindowSizeDependentResources(void)
 {
 	// TODO: Replace this with the size-dependent initialization of your app's content.
 	m_sceneRenderer->CreateWindowSizeDependentResources();
-	m_cubeRenderer->CreateWindowSizeDependentResources();
+	//m_cubeRenderer->CreateWindowSizeDependentResources();
 }
 
 // Updates the application state once per frame.
@@ -50,10 +50,10 @@ void DX11UWAMain::Update(void)
 	{
 		// TODO: Replace this with your app's content update functions.
 		m_sceneRenderer->Update(m_timer);
-		m_cubeRenderer->Update(m_timer);
+		//m_cubeRenderer->Update(m_timer);
 
 		m_sceneRenderer->SetInputDeviceData(main_kbuttons, main_currentpos);
-		m_cubeRenderer->SetInputDeviceData(main_kbuttons, main_currentpos);
+		//m_cubeRenderer->SetInputDeviceData(main_kbuttons, main_currentpos);
 		m_fpsTextRenderer->Update(m_timer);
 	});
 }
@@ -85,7 +85,7 @@ bool DX11UWAMain::Render(void)
 	// Render the scene objects.
 	// TODO: Replace this with your app's content rendering functions.
 	m_sceneRenderer->Render();
-	m_cubeRenderer->Render();
+	//m_cubeRenderer->Render();
 	m_fpsTextRenderer->Render();
 
 	return true;
@@ -95,7 +95,7 @@ bool DX11UWAMain::Render(void)
 void DX11UWAMain::OnDeviceLost(void)
 {
 	m_sceneRenderer->ReleaseDeviceDependentResources();
-	m_cubeRenderer->ReleaseDeviceDependentResources();
+	//m_cubeRenderer->ReleaseDeviceDependentResources();
 	m_fpsTextRenderer->ReleaseDeviceDependentResources();
 }
 
@@ -103,7 +103,7 @@ void DX11UWAMain::OnDeviceLost(void)
 void DX11UWAMain::OnDeviceRestored(void)
 {
 	m_sceneRenderer->CreateDeviceDependentResources();
-	m_cubeRenderer->CreateDeviceDependentResources();
+	//m_cubeRenderer->CreateDeviceDependentResources();
 	m_fpsTextRenderer->CreateDeviceDependentResources();
 	CreateWindowSizeDependentResources();
 }

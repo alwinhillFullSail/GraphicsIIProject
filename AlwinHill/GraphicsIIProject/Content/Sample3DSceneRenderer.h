@@ -9,9 +9,19 @@
 #include <atlbase.h>
 #include "Diffuse_Knight_Cleansed.h"
 #include "Common\DDSTextureLoader.h"
+#include "..\Common\DirectXHelper.h"
+
+using namespace DirectX;
 
 namespace DX11UWA
 {
+	struct ObjForLoading
+	{
+		std::vector<XMFLOAT3> vertices;
+		std::vector<unsigned short> indices;
+		std::vector<XMFLOAT3> normals;
+	};
+
 	// This sample renderer instantiates a basic rendering pipeline.
 	class Sample3DSceneRenderer
 	{
@@ -27,14 +37,16 @@ namespace DX11UWA
 		void StopTracking(void);
 		inline bool IsTracking(void) { return m_tracking; }
 
+		//Loading Model Function
+		ObjForLoading LoadModel(char *_path);
+
 		// Helper functions for keyboard and mouse input
 		void SetKeyboardButtons(const char* list);
 		void SetMousePosition(const Windows::UI::Input::PointerPoint^ pos);
 		void SetInputDeviceData(const char* kb, const Windows::UI::Input::PointerPoint^ pos);
 
-		CComPtr<ID3D11Texture2D> diffuseTexture;
+		//CComPtr<ID3D11Texture2D> diffuseTexture;
 		CComPtr<ID3D11Texture2D> modelTexture;
-		CComPtr<ID3D11ShaderResourceView> modelView;
 
 	private:
 		void Rotate(float radians);
@@ -46,15 +58,37 @@ namespace DX11UWA
 
 		// Direct3D resources for cube geometry.
 		Microsoft::WRL::ComPtr<ID3D11InputLayout>	m_inputLayout;
-		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_vertexBuffer;
-		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_indexBuffer;
 		Microsoft::WRL::ComPtr<ID3D11VertexShader>	m_vertexShader;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>	m_pixelShader;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_constantBuffer;
 
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_vertexBuffer;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_indexBuffer;
+		CComPtr<ID3D11ShaderResourceView>			modelView;
+
 		// System resources for cube geometry.
-		ModelViewProjectionConstantBuffer	m_constantBufferData;
+		ModelViewProjectionConstantBuffer			m_constantBufferData;
 		uint32	m_indexCount;
+
+		struct MODELDATA
+		{
+			Microsoft::WRL::ComPtr<ID3D11Buffer>		m_vertexBuffer;
+			Microsoft::WRL::ComPtr<ID3D11Buffer>		m_indexBuffer;
+			CComPtr<ID3D11ShaderResourceView>			modelView;
+			// System resources for cube geometry.
+			ModelViewProjectionConstantBuffer			m_constantBufferData;
+			uint32										m_indexCount;
+		};
+
+		std::vector<MODELDATA> modelData;
+
+		//Shaders for models excluding the CUBE
+		Microsoft::WRL::ComPtr<ID3D11VertexShader>	modelVertexShader;
+		Microsoft::WRL::ComPtr<ID3D11PixelShader>	modelPixelShader;
+		Microsoft::WRL::ComPtr<ID3D11InputLayout>	modelInputLayout;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		modelConstantBuffer;
+
+
 
 		// Variables used with the rendering loop.
 		bool	m_loadingComplete;
@@ -69,5 +103,7 @@ namespace DX11UWA
 		// Matrix data member for the camera
 		DirectX::XMFLOAT4X4 m_camera;
 	};
+
+
 }
 
