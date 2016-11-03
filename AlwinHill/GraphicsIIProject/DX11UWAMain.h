@@ -34,9 +34,6 @@ namespace DX11UWA
 		std::unique_ptr<Sample3DSceneRenderer> m_sceneRenderer;
 		std::unique_ptr<SampleFpsTextRenderer> m_fpsTextRenderer;
 
-		std::unique_ptr<CubeRenderer> m_cubeRenderer;
-		//std::unique_ptr<SampleFpsTextRenderer> m_fpsTextRenderer;
-
 
 		// Rendering loop timer.
 		DX::StepTimer m_timer;

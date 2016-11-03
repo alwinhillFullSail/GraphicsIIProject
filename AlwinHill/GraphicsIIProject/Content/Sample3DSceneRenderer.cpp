@@ -18,6 +18,11 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 	m_prevMousePos = nullptr;
 	memset(&m_camera, 0, sizeof(XMFLOAT4X4));
 	
+	//ModelData for each model loaded... increase everytime new model is added
+	int resize = 2;
+	modelData.resize(resize);
+	//++resize;
+
 	CreateDeviceDependentResources();
 	CreateWindowSizeDependentResources();
 }
@@ -164,15 +169,26 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources(void)
 
 	XMMATRIX orientationMatrix = XMLoadFloat4x4(&orientation);
 
+	//Projection for Cube
 	XMStoreFloat4x4(&m_constantBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
 
+	//Projection for Model1
+	XMStoreFloat4x4(&modelData[0].m_constantBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
+	XMStoreFloat4x4(&modelData[1].m_constantBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
+
 	// Eye is at (0,0.7,1.5), looking at point (0,-0.1,0) with the up-vector along the y-axis.
-	static const XMVECTORF32 eye = { 0.0f, 0.7f, -1.5f, 0.0f };
+	static const XMVECTORF32 eye = { 0.0f, 0.7f, -2.5f, 0.0f };
 	static const XMVECTORF32 at = { 0.0f, -0.1f, 0.0f, 0.0f };
 	static const XMVECTORF32 up = { 0.0f, 1.0f, 0.0f, 0.0f };
 
+	//CUBE
 	XMStoreFloat4x4(&m_camera, XMMatrixInverse(nullptr, XMMatrixLookAtLH(eye, at, up)));
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
+
+	//Models
+	XMStoreFloat4x4(&modelData[0].m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
+	XMStoreFloat4x4(&modelData[1].m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
+
 }
 
 // Called once per frame, rotates the cube and calculates the model and view matrices.
@@ -197,7 +213,11 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 void Sample3DSceneRenderer::Rotate(float radians)
 {
 	// Prepare to pass the updated model matrix to the shader
-	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixRotationY(radians)));
+	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(1.5, 0, 1.2) * XMMatrixRotationY(radians)));
+
+	//Translate MODEL 1 
+	XMStoreFloat4x4(&modelData[0].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-0.5,0,0.5) * XMMatrixRotationY(3.142)));
+	XMStoreFloat4x4(&modelData[1].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(0.5, 0, 0.5) * XMMatrixRotationY(3.142)));
 }
 
 void Sample3DSceneRenderer::UpdateCamera(DX::StepTimer const& timer, float const moveSpd, float const rotSpd)
@@ -324,8 +344,12 @@ void Sample3DSceneRenderer::Render(void)
 
 	auto context = m_deviceResources->GetD3DDeviceContext();
 	auto context2 = m_deviceResources->GetD3DDeviceContext();
+	auto context3 = m_deviceResources->GetD3DDeviceContext();
 
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
+	XMStoreFloat4x4(&modelData[0].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
+	XMStoreFloat4x4(&modelData[1].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
+
 
 	// Prepare the constant buffer to send it to the graphics device.
 	context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
@@ -348,6 +372,7 @@ void Sample3DSceneRenderer::Render(void)
 
 
 	//Loading textures
+	//MODEL1
 	ID3D11ShaderResourceView *texViews[] = { { modelData[0].modelView } };
 	D3D11_SAMPLER_DESC samplerDesc;
 	samplerDesc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT; // bilinear
@@ -364,7 +389,7 @@ void Sample3DSceneRenderer::Render(void)
 	context2->PSSetSamplers(0, 1, &samplerS);
 	context2->PSSetShaderResources(0, 1, texViews);
 
-	context2->UpdateSubresource1(modelConstantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
+	context2->UpdateSubresource1(modelConstantBuffer.Get(), 0, NULL, &modelData[0].m_constantBufferData, 0, 0, 0);
 	UINT stride2 = sizeof(XMFLOAT3) * 3;
 	UINT offset2 = 0;
 	context2->IASetVertexBuffers(0, 1, modelData[0].m_vertexBuffer.GetAddressOf(), &stride2, &offset2);
@@ -380,6 +405,41 @@ void Sample3DSceneRenderer::Render(void)
 	context2->PSSetShader(modelPixelShader.Get(), nullptr, 0);
 	// Draw the objects.
 	context2->DrawIndexed(modelData[0].m_indexCount, 0, 0);
+
+
+	//MODEL 2
+	ID3D11ShaderResourceView *texViews2[] = { { modelData[1].modelView } };
+	D3D11_SAMPLER_DESC samplerDesc2;
+	samplerDesc2.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT; // bilinear
+	samplerDesc2.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDesc2.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDesc2.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	samplerDesc2.MaxAnisotropy = 1.0f;
+	samplerDesc2.MipLODBias = 1.0f;
+
+	ID3D11SamplerState *samplerS2;
+
+	m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc2, &samplerS2);
+
+	context3->PSSetSamplers(0, 1, &samplerS2);
+	context3->PSSetShaderResources(0, 1, texViews2);
+
+	context3->UpdateSubresource1(modelConstantBuffer.Get(), 0, NULL, &modelData[1].m_constantBufferData, 0, 0, 0);
+	UINT stride3 = sizeof(XMFLOAT3) * 3;
+	UINT offset3 = 0;
+	context3->IASetVertexBuffers(0, 1, modelData[1].m_vertexBuffer.GetAddressOf(), &stride3, &offset3);
+	// Each index is one 16-bit unsigned integer (short).
+	context3->IASetIndexBuffer(modelData[1].m_indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+	context3->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context3->IASetInputLayout(modelInputLayout.Get());
+	// Attach our vertex shader.
+	context3->VSSetShader(modelVertexShader.Get(), nullptr, 0);
+	// Send the constant buffer to the graphics device.
+	context3->VSSetConstantBuffers1(0, 1, modelConstantBuffer.GetAddressOf(), nullptr, nullptr);
+	// Attach our pixel shader.
+	context3->PSSetShader(modelPixelShader.Get(), nullptr, 0);
+	// Draw the objects.
+	context3->DrawIndexed(modelData[1].m_indexCount, 0, 0);
 }
 
 void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
@@ -450,11 +510,9 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		//DDS Loader
 		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"Diffuse_Knight_Cleansed.dds", (ID3D11Resource**)&modelTexture, &modelView);
 		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"BStrongoli_D_Sword.dds", (ID3D11Resource**)&modelTexture, &modelView);
-		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"dragonknight_hr-wind.dds", (ID3D11Resource**)&modelTexture, &modelView);
-		int resize = 1;
-		modelData.resize(resize);
-		//++resize;
-		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"succubus-fire.dds", (ID3D11Resource**)&modelTexture, &modelData[0].modelView);
+		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"dragonknight_hr-wind.dds", (ID3D11Resource**)&modelData[0].modelTexture, &modelData[0].modelView);
+		
+		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"succubus-fire.dds", (ID3D11Resource**)&modelData[0].modelTexture, &modelData[0].modelView);
 
 		//Load Model1
 		ObjForLoading object = LoadModel("succubus-fire.obj");
@@ -475,6 +533,31 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&indexBufferDesc, &indexBufferData, &modelData[0].m_indexBuffer));
 	});
 
+	auto createModel2 = (createModelVS && createModelPS).then([this]()
+	{
+		srand(time(NULL));
+
+		//DDS Loader
+		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"dragonknight_hr-wind.dds", (ID3D11Resource**)&modelData[1].modelTexture, &modelData[1].modelView);
+
+		//Load Model1
+		ObjForLoading object = LoadModel("dragonknight_hr-wind.obj");
+
+		D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
+		vertexBufferData.pSysMem = object.vertices.data();
+		vertexBufferData.SysMemPitch = 0;
+		vertexBufferData.SysMemSlicePitch = 0;
+		CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(XMFLOAT3) * object.vertices.size(), D3D11_BIND_VERTEX_BUFFER);
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&vertexBufferDesc, &vertexBufferData, &modelData[1].m_vertexBuffer));
+
+		modelData[1].m_indexCount = object.indices.size();
+		D3D11_SUBRESOURCE_DATA indexBufferData = { 0 };
+		indexBufferData.pSysMem = object.indices.data();
+		indexBufferData.SysMemPitch = 0;
+		indexBufferData.SysMemSlicePitch = 0;
+		CD3D11_BUFFER_DESC indexBufferDesc(sizeof(unsigned short) * object.indices.size(), D3D11_BIND_INDEX_BUFFER);
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&indexBufferDesc, &indexBufferData, &modelData[1].m_indexBuffer));
+	});
 
 	auto createCubeTask = (createPSTask && createVSTask).then([this]()
 	{

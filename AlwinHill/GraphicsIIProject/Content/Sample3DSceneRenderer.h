@@ -78,6 +78,7 @@ namespace DX11UWA
 			// System resources for cube geometry.
 			ModelViewProjectionConstantBuffer			m_constantBufferData;
 			uint32										m_indexCount;
+			CComPtr<ID3D11Texture2D>					modelTexture;
 		};
 
 		std::vector<MODELDATA> modelData;
