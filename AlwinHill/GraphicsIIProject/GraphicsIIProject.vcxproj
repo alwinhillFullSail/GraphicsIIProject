@@ -198,6 +198,7 @@
     <Image Include="BStrongoli_D_Sword.dds" />
     <Image Include="Diffuse_Knight_Cleansed.dds" />
     <Image Include="dragonknight_hr-wind.dds" />
+    <Image Include="SkyboxOcean.dds" />
     <Image Include="succubus-fire.dds" />
     <Image Include="TwoSwords.dds" />
   </ItemGroup>

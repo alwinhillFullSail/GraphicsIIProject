@@ -10,6 +10,7 @@
 #include "Diffuse_Knight_Cleansed.h"
 #include "Common\DDSTextureLoader.h"
 #include "..\Common\DirectXHelper.h"
+#include <random>
 
 using namespace DirectX;
 
@@ -20,6 +21,12 @@ namespace DX11UWA
 		std::vector<XMFLOAT3> vertices;
 		std::vector<unsigned short> indices;
 		std::vector<XMFLOAT3> normals;
+	};
+
+	//stores the info for instamced objects
+	struct InstanceType
+	{
+		XMFLOAT3 position;
 	};
 
 	// This sample renderer instantiates a basic rendering pipeline.
@@ -49,7 +56,7 @@ namespace DX11UWA
 		CComPtr<ID3D11Texture2D> modelTexture;
 
 	private:
-		void Rotate(float radians);
+		void Rotate(/*ModelViewProjectionConstantBuffer &modelView,*/ float radians);
 		void UpdateCamera(DX::StepTimer const& timer, float const moveSpd, float const rotSpd);
 
 	private:
@@ -64,6 +71,10 @@ namespace DX11UWA
 
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_vertexBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_indexBuffer;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_skyboxVertexBuffer;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_skyboxIndexBuffer;
+		uint32										m_skyboxIndexCount;
+
 		CComPtr<ID3D11ShaderResourceView>			modelView;
 
 		// System resources for cube geometry.
@@ -88,7 +99,8 @@ namespace DX11UWA
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>	modelPixelShader;
 		Microsoft::WRL::ComPtr<ID3D11InputLayout>	modelInputLayout;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		modelConstantBuffer;
-
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_instanceBuffer;
+		int											m_instanceCount;
 
 
 		// Variables used with the rendering loop.
