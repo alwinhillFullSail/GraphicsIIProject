@@ -71,9 +71,33 @@ namespace DX11UWA
 
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_vertexBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_indexBuffer;
+
+		//Skybox variables
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_skyboxVertexBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_skyboxIndexBuffer;
 		uint32										m_skyboxIndexCount;
+		Microsoft::WRL::ComPtr<ID3D11VertexShader>	skyboxVertexShader;
+		Microsoft::WRL::ComPtr<ID3D11PixelShader>	skyboxPixelShader;
+		Microsoft::WRL::ComPtr<ID3D11InputLayout>	skyboxInputLayout;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		skyboxConstantBuffer;
+		CComPtr<ID3D11Texture2D>					skyboxTexture;
+		CComPtr<ID3D11ShaderResourceView>			skyboxModelView;
+		CComPtr<ID3D11Buffer>						m_gradientBuffer;
+		XMFLOAT4 m_apexColor;
+		XMFLOAT4 m_centerColor;
+
+
+		struct GradientBufferType
+		{
+			XMFLOAT4 apexColor;
+			XMFLOAT4 centerColor;
+		};
+		struct MatrixBufferType
+		{
+			XMMATRIX world;
+			XMMATRIX view;
+			XMMATRIX projection;
+		};
 
 		CComPtr<ID3D11ShaderResourceView>			modelView;
 

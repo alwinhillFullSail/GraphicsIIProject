@@ -6,8 +6,8 @@ struct PixelShaderInput
 	float3 normal : NORMAL;
 };
 
-texture2D env : register(t0);
-SamplerState envFilter : register(s0);
+texture2D env : register(t1);
+SamplerState envFilter : register(s1);
 
 float4 main(PixelShaderInput input) : SV_TARGET
 {

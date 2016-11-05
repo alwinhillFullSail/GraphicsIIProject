@@ -30,7 +30,16 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 
 	m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc2, &samplerS2);
 
-	m_deviceResources->GetD3DDeviceContext()->PSSetSamplers(0, 1, &samplerS2);
+	m_deviceResources->GetD3DDeviceContext()->PSSetSamplers(1, 1, &samplerS2);
+
+	D3D11_BUFFER_DESC gradientBufferDesc;
+	gradientBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	gradientBufferDesc.ByteWidth = sizeof(GradientBufferType);
+	gradientBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	gradientBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	gradientBufferDesc.MiscFlags = 0;
+	gradientBufferDesc.StructureByteStride = 0;
+	m_deviceResources->GetD3DDevice()->CreateBuffer(&gradientBufferDesc, NULL, &m_gradientBuffer);
 
 	//ModelData for each model loaded... increase everytime new model is added
 	int resize = 3;
@@ -39,6 +48,9 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 	m_instanceBuffer = nullptr;
 	CreateDeviceDependentResources();
 	CreateWindowSizeDependentResources();
+
+	m_apexColor = XMFLOAT4(0.0f, 0.15f, 0.66f, 1.0f);
+	m_centerColor = XMFLOAT4(0.81f, 0.38f, 0.66f, 1.0f);
 }
 
 //Function to load models from .obj files
@@ -128,16 +140,16 @@ ObjForLoading Sample3DSceneRenderer::LoadModel(char *_path)
 	//outVertices.resize(vertIndices.size());
 	for (unsigned int i = 0; i < vertIndices.size(); i++)
 	{
-		unsigned int vIndex = vertIndices[i];
-		unsigned int vertex = vIndex - 1;
+		unsigned short vIndex = vertIndices[i];
+		unsigned short vertex = vIndex - 1;
 		outIndices.push_back(vertex);
 
-		unsigned int uvIndex = uvIndices[i];
-		unsigned int uv = uvIndex - 1;
+		unsigned short uvIndex = uvIndices[i];
+		unsigned short uv = uvIndex - 1;
 		outUV.push_back(uv);
 
-		unsigned int normalIndex = normalIndices[i];
-		unsigned int normal = normalIndex - 1;
+		unsigned short normalIndex = normalIndices[i];
+		unsigned short normal = normalIndex - 1;
 		outNormals.push_back(normal);
 	}
 
@@ -367,6 +379,23 @@ void Sample3DSceneRenderer::Render(void)
 	XMStoreFloat4x4(&modelData[0].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
 	XMStoreFloat4x4(&modelData[1].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
 
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	//MatrixBufferType* dataPtr;
+	GradientBufferType* dataPtr2;
+	unsigned int bufferNumber;
+	/*XMMatrixTranspose(&worldMatrix, &worldMatrix);
+	XMMatrixTranspose(&viewMatrix, &viewMatrix);
+	XMMatrixTranspose(&projectionMatrix, &projectionMatrix);*/
+	context->Map(m_gradientBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+
+	dataPtr2 = (GradientBufferType*)mappedResource.pData;
+	dataPtr2->apexColor = m_apexColor;
+	dataPtr2->centerColor = m_centerColor;
+	context->Unmap(m_gradientBuffer, 0);
+	bufferNumber = 0;
+	//context->PSSetConstantBuffers(bufferNumber, 1, &m_gradientBuffer);
+
+
 	// Prepare the constant buffer to send it to the graphics device.
 	context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
 	// Each vertex is one instance of the VertexPositionColor struct.
@@ -390,7 +419,7 @@ void Sample3DSceneRenderer::Render(void)
 	for (size_t i = 0; i < modelData.size(); i++)
 	{
 		ID3D11ShaderResourceView *texViews2[] = { { modelData[i].modelView } };
-		context->PSSetShaderResources(0, 1, texViews2);
+		context->PSSetShaderResources(1, 1, texViews2);
 
 		context->UpdateSubresource1(modelConstantBuffer.Get(), 0, NULL, &modelData[i].m_constantBufferData, 0, 0, 0);
 		UINT stride3 = sizeof(XMFLOAT3) * 3;
@@ -407,13 +436,13 @@ void Sample3DSceneRenderer::Render(void)
 		// Attach our pixel shader.
 		context->PSSetShader(modelPixelShader.Get(), nullptr, 0);
 		// Draw the objects.
-		context->DrawIndexedInstanced(modelData[i].m_indexCount, 1, 0, 0, 0);
+		context->DrawIndexed(modelData[i].m_indexCount, 0, 0);
 
 	}
-	//Instancing Stuff
 
+	//Instancing Stuff
 	ID3D11ShaderResourceView *texViews2[] = { { modelData[0].modelView } };
-	context->PSSetShaderResources(0, 1, texViews2);
+	context->PSSetShaderResources(1, 1, texViews2);
 
 	unsigned int strides[2];
 	unsigned int offsets[2];
@@ -448,6 +477,10 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	//For models
 	auto loadModelVS = DX::ReadDataAsync(L"VS_ModelShader.cso");
 	auto loadModelPS = DX::ReadDataAsync(L"PS_ModelShader.cso");
+
+	//For Skybox
+	auto loadSkyboxVS = DX::ReadDataAsync(L"VS_SkyboxShader.cso");
+	auto loadSkyboxPS = DX::ReadDataAsync(L"PS_SkyboxShader.cso");
 
 	// After the vertex shader file is loaded, create the shader and input layout.
 	auto createVSTask = loadVSTask.then([this](const std::vector<byte>& fileData)
@@ -499,7 +532,31 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	});
 
 	
-	// Once both shaders are loaded, create the mesh.
+	//Skybox Shaders
+	auto createSkyboxVS = loadSkyboxVS.then([this](const std::vector<byte>& fileData)
+	{
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &skyboxVertexShader));
+
+		static const D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
+		{
+			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		};
+
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateInputLayout(vertexDesc, ARRAYSIZE(vertexDesc), &fileData[0], fileData.size(), &skyboxInputLayout));
+
+	});
+	auto createSkyboxPS = loadSkyboxPS.then([this](const std::vector<byte>& fileData)
+	{
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &skyboxPixelShader));
+
+		CD3D11_BUFFER_DESC constantBufferDesc(sizeof(ModelViewProjectionConstantBuffer), D3D11_BIND_CONSTANT_BUFFER);
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &skyboxConstantBuffer));
+	});
+	
+
+
+	// Once shaders are loaded, create the mesh.
 	auto createModelTask = (createModelVS && createModelPS).then([this]()
 	{
 		srand(time(NULL));
@@ -647,9 +704,9 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	});
 
 	//Creating the skybox
-	auto skyBox = (createPSTask && createVSTask).then([this]()
+	auto skyBox = (createSkyboxPS && createSkyboxVS).then([this]()
 	{
-		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"SkyboxOcean.dds", (ID3D11Resource**)&modelData[2].modelTexture, &modelData[2].modelView);
+		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"SkyboxOcean.dds", (ID3D11Resource**)&skyboxTexture, &skyboxModelView);
 		static const VertexPositionColor skyboxVertices[] =
 		{
 			{ XMFLOAT3(-0.5f, -0.5f, -0.5f), XMFLOAT3(0.0f, 0.0f, 0.0f) },
