@@ -51,6 +51,7 @@ namespace DX11UWA
 		void SetKeyboardButtons(const char* list);
 		void SetMousePosition(const Windows::UI::Input::PointerPoint^ pos);
 		void SetInputDeviceData(const char* kb, const Windows::UI::Input::PointerPoint^ pos);
+		void SkyboxRenderer(DirectX::XMFLOAT3 pos);
 
 		//CComPtr<ID3D11Texture2D> diffuseTexture;
 		CComPtr<ID3D11Texture2D> modelTexture;
@@ -78,20 +79,13 @@ namespace DX11UWA
 		uint32										m_skyboxIndexCount;
 		Microsoft::WRL::ComPtr<ID3D11VertexShader>	skyboxVertexShader;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>	skyboxPixelShader;
-		Microsoft::WRL::ComPtr<ID3D11InputLayout>	skyboxInputLayout;
-		Microsoft::WRL::ComPtr<ID3D11Buffer>		skyboxConstantBuffer;
+		//Microsoft::WRL::ComPtr<ID3D11InputLayout>	skyboxInputLayout;
+		//Microsoft::WRL::ComPtr<ID3D11Buffer>		skyboxConstantBuffer;
 		CComPtr<ID3D11Texture2D>					skyboxTexture;
 		CComPtr<ID3D11ShaderResourceView>			skyboxModelView;
-		CComPtr<ID3D11Buffer>						m_gradientBuffer;
-		XMFLOAT4 m_apexColor;
-		XMFLOAT4 m_centerColor;
+		ModelViewProjectionConstantBuffer			skyboxConstantBufferData;
+		
 
-
-		struct GradientBufferType
-		{
-			XMFLOAT4 apexColor;
-			XMFLOAT4 centerColor;
-		};
 		struct MatrixBufferType
 		{
 			XMMATRIX world;
@@ -123,8 +117,10 @@ namespace DX11UWA
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>	modelPixelShader;
 		Microsoft::WRL::ComPtr<ID3D11InputLayout>	modelInputLayout;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		modelConstantBuffer;
-		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_instanceBuffer;
+
+		//Skybox Variables
 		int											m_instanceCount;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_instanceBuffer;
 
 
 		// Variables used with the rendering loop.

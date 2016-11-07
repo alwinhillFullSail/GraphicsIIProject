@@ -1,36 +1,40 @@
-cbuffer MatrixBuffer
+cbuffer ModelViewProjectionConstantBuffer : register (b0)
 {
 	matrix worldMatrix;
 	matrix viewMatrix;
 	matrix projectionMatrix;
 };
 
-struct VertexInputType
+struct VertexShaderInput
 {
 	float4 position : POSITION;
+	float4 uv : UV;
 };
 
-struct PixelInputType
+struct PixelShaderInput
 {
 	float4 position : SV_POSITION;
-	float4 domePosition : TEXCOORD0;
+	float4 uv : UV;
 };
 
-PixelInputType main(VertexInputType input)
+PixelShaderInput main(VertexShaderInput input)
 {
-	PixelInputType output;
+	PixelShaderInput output;
 
+	float4 position = float4(input.position);
 
 	// Change the position vector to be 4 units for proper matrix calculations.
 	input.position.w = 1.0f;
 
 	// Calculate the position of the vertex against the world, view, and projection matrices.
-	output.position = mul(input.position, worldMatrix);
-	output.position = mul(output.position, viewMatrix);
-	output.position = mul(output.position, projectionMatrix);
+	position = mul(position, worldMatrix);
+	position = mul(position, viewMatrix);
+	position = mul(position, projectionMatrix);
 
 	// Send the unmodified position through to the pixel shader.
-	output.domePosition = input.position;
+	output.position = position;
+	output.uv = input.position;
+	//output.normal = input.normal;
 
 	return output;
 }

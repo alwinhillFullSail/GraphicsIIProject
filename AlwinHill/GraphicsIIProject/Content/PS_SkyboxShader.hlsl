@@ -1,31 +1,15 @@
-cbuffer GradientBuffer
-{
-	float4 apexColor;
-	float4 centerColor;
-};
 
-struct PixelInputType
+struct PixelShaderInput
 {
 	float4 position : SV_POSITION;
-	float4 domePosition : TEXCOORD0;
+	float4 uv : UV;
+	//float4 normal : NORMAL
 };
 
-float4 main(PixelInputType input) : SV_TARGET
+textureCUBE env : register(t0);
+SamplerState envFilter : register (s0);
+
+float4 main(PixelShaderInput input) : SV_TARGET
 {
-	float height;
-	float4 outputColor;
-
-	// Determine the position on the skybox where this pixel is located.
-	height = input.domePosition.y;
-
-	// The value ranges from -1.0f to +1.0f so change it to only positive values.
-	if (height < 0.0)
-	{
-		height = 0.0f;
-	}
-
-	// Determine the gradient color by interpolating between the apex and center based on the height of the pixel in the skybox.
-	outputColor = lerp(centerColor, apexColor, height);
-
-	return outputColor;
+	return env.Sample(envFilter, input.uv);
 }

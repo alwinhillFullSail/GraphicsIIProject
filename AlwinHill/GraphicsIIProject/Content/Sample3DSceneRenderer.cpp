@@ -32,14 +32,6 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 
 	m_deviceResources->GetD3DDeviceContext()->PSSetSamplers(1, 1, &samplerS2);
 
-	D3D11_BUFFER_DESC gradientBufferDesc;
-	gradientBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	gradientBufferDesc.ByteWidth = sizeof(GradientBufferType);
-	gradientBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	gradientBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	gradientBufferDesc.MiscFlags = 0;
-	gradientBufferDesc.StructureByteStride = 0;
-	m_deviceResources->GetD3DDevice()->CreateBuffer(&gradientBufferDesc, NULL, &m_gradientBuffer);
 
 	//ModelData for each model loaded... increase everytime new model is added
 	int resize = 3;
@@ -49,8 +41,6 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 	CreateDeviceDependentResources();
 	CreateWindowSizeDependentResources();
 
-	m_apexColor = XMFLOAT4(0.0f, 0.15f, 0.66f, 1.0f);
-	m_centerColor = XMFLOAT4(0.81f, 0.38f, 0.66f, 1.0f);
 }
 
 //Function to load models from .obj files
@@ -229,7 +219,7 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 
 		Rotate(radians);
 
-
+		SkyboxRenderer(XMFLOAT3(m_camera._41, m_camera._42, m_camera._43));
 		//Rotate(modelData[0])
 	}
 
@@ -244,10 +234,15 @@ void Sample3DSceneRenderer::Rotate(/*ModelViewProjectionConstantBuffer &modelVie
 	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(1.5, 0, 1.2) * XMMatrixRotationY(radians)));
 
 	//Translate MODEL 1 
-	XMStoreFloat4x4(&modelData[0].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-0.5,0,0.5) * XMMatrixRotationY(3.142)));
+	XMStoreFloat4x4(&modelData[0].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-0.5, 0, 0.5) * XMMatrixRotationY(3.142)));
 	XMStoreFloat4x4(&modelData[1].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-1.5, -1.5, 0.5) * XMMatrixRotationY(3.142)));
+
 }
 
+void Sample3DSceneRenderer::SkyboxRenderer(XMFLOAT3 pos)
+{
+	XMStoreFloat4x4(&skyboxConstantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(pos.x, pos.y, pos.z)) * XMMatrixScaling(100,100,100));
+}
 
 void Sample3DSceneRenderer::UpdateCamera(DX::StepTimer const& timer, float const moveSpd, float const rotSpd)
 {
@@ -379,25 +374,8 @@ void Sample3DSceneRenderer::Render(void)
 	XMStoreFloat4x4(&modelData[0].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
 	XMStoreFloat4x4(&modelData[1].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
 
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	//MatrixBufferType* dataPtr;
-	GradientBufferType* dataPtr2;
-	unsigned int bufferNumber;
-	/*XMMatrixTranspose(&worldMatrix, &worldMatrix);
-	XMMatrixTranspose(&viewMatrix, &viewMatrix);
-	XMMatrixTranspose(&projectionMatrix, &projectionMatrix);*/
-	context->Map(m_gradientBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-
-	dataPtr2 = (GradientBufferType*)mappedResource.pData;
-	dataPtr2->apexColor = m_apexColor;
-	dataPtr2->centerColor = m_centerColor;
-	context->Unmap(m_gradientBuffer, 0);
-	bufferNumber = 0;
-	//context->PSSetConstantBuffers(bufferNumber, 1, &m_gradientBuffer);
-
-
 	// Prepare the constant buffer to send it to the graphics device.
-	context->UpdateSubresource1(m_constantBuffer.Get(), 0, NULL, &m_constantBufferData, 0, 0, 0);
+	context->UpdateSubresource1(m_constantBuffer.Get(), 0, nullptr, &m_constantBufferData, 0, 0, 0);
 	// Each vertex is one instance of the VertexPositionColor struct.
 	UINT stride = sizeof(VertexPositionColor);
 	UINT offset = 0;
@@ -465,6 +443,26 @@ void Sample3DSceneRenderer::Render(void)
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	context->IASetInputLayout(modelInputLayout.Get());
 	context->DrawIndexedInstanced(modelData[0].m_indexCount, m_instanceCount, 0, 0, 0);
+
+
+	//Skybox Render
+	ID3D11ShaderResourceView *skyboxTexViews[] = { { skyboxModelView } };
+	context->PSSetShaderResources(0, 1, skyboxTexViews);
+	skyboxConstantBufferData.view = m_constantBufferData.view;
+	skyboxConstantBufferData.projection = m_constantBufferData.projection;
+
+	context->UpdateSubresource1(modelConstantBuffer.Get(), 0, NULL, &skyboxConstantBufferData, 0, 0, 0);
+	UINT skyboxStride = sizeof(VertexPositionColor);
+	UINT skyboxOffset = 0;
+
+	context->IASetVertexBuffers(0, 1, m_skyboxVertexBuffer.GetAddressOf(), &skyboxStride, &skyboxOffset);
+	context->IASetIndexBuffer(m_skyboxIndexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	context->IASetInputLayout(m_inputLayout.Get());
+	context->VSSetShader(skyboxVertexShader.Get(), nullptr, 0);
+	context->VSSetConstantBuffers1(0, 1, modelConstantBuffer.GetAddressOf(), nullptr, nullptr);
+	context->PSSetShader(skyboxPixelShader.Get(), nullptr, 0);
+	context->DrawIndexed(m_skyboxIndexCount, 0, 0);
 }
 
 void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
@@ -537,21 +535,21 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	{
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &skyboxVertexShader));
 
-		static const D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
+		/*static const D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
 		{
 			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		};
 
-		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateInputLayout(vertexDesc, ARRAYSIZE(vertexDesc), &fileData[0], fileData.size(), &skyboxInputLayout));
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateInputLayout(vertexDesc, ARRAYSIZE(vertexDesc), &fileData[0], fileData.size(), &skyboxInputLayout));*/
 
 	});
 	auto createSkyboxPS = loadSkyboxPS.then([this](const std::vector<byte>& fileData)
 	{
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &skyboxPixelShader));
 
-		CD3D11_BUFFER_DESC constantBufferDesc(sizeof(ModelViewProjectionConstantBuffer), D3D11_BIND_CONSTANT_BUFFER);
-		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &skyboxConstantBuffer));
+		/*CD3D11_BUFFER_DESC constantBufferDesc(sizeof(ModelViewProjectionConstantBuffer), D3D11_BIND_CONSTANT_BUFFER);
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &skyboxConstantBuffer));*/
 	});
 	
 
@@ -591,7 +589,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		D3D11_BUFFER_DESC instanceBuffDesc;
 		D3D11_SUBRESOURCE_DATA instanceData;
 
-		m_instanceCount = 5;
+		m_instanceCount = 4;
 		instances = new InstanceType[m_instanceCount];
 		for (size_t i = 0; i < m_instanceCount; i++)
 		{
