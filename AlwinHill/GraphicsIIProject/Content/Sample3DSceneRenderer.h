@@ -118,38 +118,19 @@ namespace DX11UWA
 
 
 		//For Lighting
-		/*struct CUSTOMVERTEX { FLOAT X, Y, Z; XMFLOAT3 NORMAL; };
-#define CUSTOMFVF (D3DFVF_XYZ | D3DFVF_NORMAL)*/
-
 		ID3D11SamplerState *m_sampleState;
 		int lightIndexCount;
-		typedef struct D3DVECTOR
-		{
-			float x, y, z;
-		} D3DVECTOR, *LPD3DVECTOR;
 
 		ID3D11Buffer* m_lightBuffer;
-
-		// Per-instance data (must be 16 byte aligned)
-		__declspec(align(16)) struct PlaneInstanceData
-		{
-			XMMATRIX WorldMatrix;
-			XMMATRIX InverseTransposeWorldMatrix;
-		};
-
-		struct MatrixBufferType
-		{
-			XMMATRIX world;
-			XMMATRIX view;
-			XMMATRIX projection;
-		};
 
 		struct LightBufferType
 		{
 			XMFLOAT4 diffuseColor;
 			XMFLOAT3 lightDirection;
-			float padding;  // Added extra padding so structure is a multiple of 16 for CreateBuffer function requirements.
+			float lightType;  // Added extra padding so structure is a multiple of 16 for CreateBuffer function requirements.
 		};
+		XMFLOAT3 DirLightDir;
+		bool dir = false, spot = false, point = false;
 
 
 		// Variables used with the rendering loop.

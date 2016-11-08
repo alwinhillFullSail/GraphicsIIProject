@@ -17,7 +17,7 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 	m_currMousePos = nullptr;
 	m_prevMousePos = nullptr;
 	memset(&m_camera, 0, sizeof(XMFLOAT4X4));
-	
+
 
 	D3D11_SAMPLER_DESC samplerDesc2;
 	samplerDesc2.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT; // bilinear
@@ -75,22 +75,19 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 	// Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
 	m_deviceResources->GetD3DDevice()->CreateBuffer(&lightBufferDesc, NULL, &m_lightBuffer);
 
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	/*D3D11_MAPPED_SUBRESOURCE mappedResource;
 	unsigned int bufferNumber;
-	MatrixBufferType* dataPtr;
 	LightBufferType* dataPtr2;
 
 	m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	dataPtr2 = (LightBufferType*)mappedResource.pData;
 	dataPtr2->diffuseColor = XMFLOAT4(0.2, 1, 0.2, 1);
-	dataPtr2->lightDirection = XMFLOAT3(1, 1, 1);
+	dataPtr2->lightDirection = XMFLOAT3(-5, 1, 1);
 	dataPtr2->padding = 0.0f;
 
 	m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
 	bufferNumber = 0;
-	m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
-
-	lightIndexCount = 3;
+	m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);*/
 }
 
 //Function to load models from .obj files
@@ -114,7 +111,7 @@ ObjForLoading Sample3DSceneRenderer::LoadModel(char *_path)
 	//path = "swords.obj";
 	//path = "succubus-fire.obj";
 	path = _path;
-	
+
 	std::ifstream file;
 	file.open(path);
 	while (!file.eof())
@@ -270,7 +267,14 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 		Rotate(radians);
 
 		SkyboxRenderer(XMFLOAT3(m_camera._41, m_camera._42, m_camera._43));
-		//Rotate(modelData[0])
+
+		//Rotate Light
+		float radius = 7.0f;
+		float offset = 0/*2.0f * XM_PI / 3*/;
+		XMFLOAT4 lightPos = XMFLOAT4(std::sin(totalRotation + offset) * radius, 7.0f, std::cos(totalRotation + offset) * radius, 1.0f);
+		XMVECTOR lightDir = XMVectorSet(-lightPos.x, -lightPos.y, -lightPos.z, 1.0f);
+		lightDir = XMVector3Normalize(lightDir);
+		XMStoreFloat3(&DirLightDir, lightDir);
 	}
 
 	// Update or move camera here
@@ -278,20 +282,19 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 }
 
 // Rotate the 3D cube model a set amount of radians.
-void Sample3DSceneRenderer::Rotate(/*ModelViewProjectionConstantBuffer &modelView,*/ float radians)
+void Sample3DSceneRenderer::Rotate(float radians)
 {
 	// Prepare to pass the updated model matrix to the shader
-	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(1.5, 0, 1.2) * XMMatrixRotationY(radians)));
+	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(0, -3, 0) * XMMatrixRotationY(radians)));
 
 	//Translate MODEL 1 
-	XMStoreFloat4x4(&modelData[0].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-0.5, 0, 0.5) * XMMatrixRotationY(radians)));
+	XMStoreFloat4x4(&modelData[0].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-0.5, 0, 0.5) * XMMatrixRotationY(3.142)));
 	XMStoreFloat4x4(&modelData[1].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-1.5, -1.5, 0.5) * XMMatrixRotationY(3.142)));
-
 }
 
 void Sample3DSceneRenderer::SkyboxRenderer(XMFLOAT3 pos)
 {
-	XMStoreFloat4x4(&skyboxConstantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(pos.x, pos.y, pos.z)) * XMMatrixScaling(100,100,100));
+	XMStoreFloat4x4(&skyboxConstantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(pos.x, pos.y, pos.z)) * XMMatrixScaling(100, 100, 100));
 }
 
 void Sample3DSceneRenderer::UpdateCamera(DX::StepTimer const& timer, float const moveSpd, float const rotSpd)
@@ -440,7 +443,7 @@ void Sample3DSceneRenderer::Render(void)
 	context->VSSetConstantBuffers1(0, 1, m_constantBuffer.GetAddressOf(), nullptr, nullptr);
 	// Attach our pixel shader.
 	context->PSSetShader(m_pixelShader.Get(), nullptr, 0);
-	 //Draw the objects.
+	//Draw the objects.
 	context->DrawIndexed(m_indexCount, 0, 0);
 
 	//Loading textures for models
@@ -487,7 +490,7 @@ void Sample3DSceneRenderer::Render(void)
 
 
 	context->UpdateSubresource1(modelConstantBuffer.Get(), 0, NULL, &modelData[0].m_constantBufferData, 0, 0, 0);
-	
+
 	context->IASetVertexBuffers(0, 2, bufferPointers->GetAddressOf(), strides, offsets);
 	context->IASetIndexBuffer(modelData[0].m_indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -513,6 +516,70 @@ void Sample3DSceneRenderer::Render(void)
 	context->VSSetConstantBuffers1(0, 1, modelConstantBuffer.GetAddressOf(), nullptr, nullptr);
 	context->PSSetShader(skyboxPixelShader.Get(), nullptr, 0);
 	context->DrawIndexed(m_skyboxIndexCount, 0, 0);
+
+
+	//Directional Lighting
+	if (m_kbuttons['1'])
+	{
+		dir = !dir;
+		point = false;
+		spot = false;
+	}
+	if (m_kbuttons['2'])
+	{
+		point = !point;
+		dir = false;
+		spot = false;
+	}
+	if (m_kbuttons['3'])
+	{
+		spot = !spot;
+		dir = false;
+		point = false;
+	}
+
+	if (dir)
+	{
+		D3D11_MAPPED_SUBRESOURCE mappedResource;
+		unsigned int bufferNumber;
+		LightBufferType* dataPtr2;
+		m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		dataPtr2 = (LightBufferType*)mappedResource.pData;
+		dataPtr2->diffuseColor = XMFLOAT4(DirLightDir.x, DirLightDir.y, DirLightDir.z, 1.0f)/*XMFLOAT4(0.2f, 1.0f, 0.2f, 1.0f)*/;
+		dataPtr2->lightDirection = DirLightDir;
+		dataPtr2->lightType = 1.0f;
+		m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
+		bufferNumber = 0;
+		m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
+	}
+	if (point)
+	{
+		D3D11_MAPPED_SUBRESOURCE mappedResource;
+		unsigned int bufferNumber;
+		LightBufferType* dataPtr2;
+		m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		dataPtr2 = (LightBufferType*)mappedResource.pData;
+		dataPtr2->diffuseColor = XMFLOAT4(0.2f, 1.0f, 0.2f, 1.0f);
+		dataPtr2->lightDirection = XMFLOAT3(0.0f, 5.0f, 1.0f);
+		dataPtr2->lightType = 2.0f;
+		m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
+		bufferNumber = 0;
+		m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
+	}
+	if (spot)
+	{
+		D3D11_MAPPED_SUBRESOURCE mappedResource;
+		unsigned int bufferNumber;
+		LightBufferType* dataPtr2;
+		m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		dataPtr2 = (LightBufferType*)mappedResource.pData;
+		dataPtr2->diffuseColor = XMFLOAT4(0.2f, 1.0f, 0.2f, 1.0f);
+		dataPtr2->lightDirection = XMFLOAT3(0.0f, 5.0f, 1.0f);
+		dataPtr2->lightType = 3.0f;
+		m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
+		bufferNumber = 0;
+		m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
+	}
 
 }
 
@@ -585,7 +652,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &modelConstantBuffer));
 	});
 
-	
+
 	//Skybox Shaders
 	auto createSkyboxVS = loadSkyboxVS.then([this](const std::vector<byte>& fileData)
 	{
@@ -608,16 +675,19 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &skyboxConstantBuffer));*/
 	});
 
-	//Light Shaders
+	//LIGHT Shaders
 	auto createDirLightPS = loadDirShaderPS.then([this](const std::vector<byte>& fileData)
 	{
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &modelPixelShader));
 	});
 
-	/*auto createDirLightVS = loadDirShaderVS.then([this](const std::vector<byte>& fileData)
+	auto createDirLightVS = loadDirShaderVS.then([this](const std::vector<byte>& fileData)
 	{
-		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &modelVertexShader));
-	});*/
+		//DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &modelVertexShader));
+	});
+
+
+
 
 	// Once shaders are loaded, create the mesh.
 	auto createModelTask = (createModelVS && createModelPS).then([this]()
@@ -628,7 +698,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"Diffuse_Knight_Cleansed.dds", (ID3D11Resource**)&modelTexture, &modelView);
 		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"BStrongoli_D_Sword.dds", (ID3D11Resource**)&modelTexture, &modelView);
 		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"dragonknight_hr-wind.dds", (ID3D11Resource**)&modelData[0].modelTexture, &modelData[0].modelView);
-		
+
 		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"succubus-fire.dds", (ID3D11Resource**)&modelData[0].modelTexture, &modelData[0].modelView);
 
 		//Load Model1
@@ -661,7 +731,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 			float x = (rand() % 6) - 3;
 			float y = (rand() % 6) - 3;
 			float z = (rand() % 6);
-			
+
 			instances[i].position = XMFLOAT3(x, y, z);
 		}
 		/*instances[0].position = XMFLOAT3(-2.5f, -1.5f, -2.0f);
