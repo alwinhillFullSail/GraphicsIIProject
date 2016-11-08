@@ -84,14 +84,7 @@ namespace DX11UWA
 		CComPtr<ID3D11Texture2D>					skyboxTexture;
 		CComPtr<ID3D11ShaderResourceView>			skyboxModelView;
 		ModelViewProjectionConstantBuffer			skyboxConstantBufferData;
-		
 
-		struct MatrixBufferType
-		{
-			XMMATRIX world;
-			XMMATRIX view;
-			XMMATRIX projection;
-		};
 
 		CComPtr<ID3D11ShaderResourceView>			modelView;
 
@@ -99,6 +92,7 @@ namespace DX11UWA
 		ModelViewProjectionConstantBuffer			m_constantBufferData;
 		uint32	m_indexCount;
 
+		//For loading models
 		struct MODELDATA
 		{
 			Microsoft::WRL::ComPtr<ID3D11Buffer>		m_vertexBuffer;
@@ -121,6 +115,41 @@ namespace DX11UWA
 		//Skybox Variables
 		int											m_instanceCount;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_instanceBuffer;
+
+
+		//For Lighting
+		/*struct CUSTOMVERTEX { FLOAT X, Y, Z; XMFLOAT3 NORMAL; };
+#define CUSTOMFVF (D3DFVF_XYZ | D3DFVF_NORMAL)*/
+
+		ID3D11SamplerState *m_sampleState;
+		int lightIndexCount;
+		typedef struct D3DVECTOR
+		{
+			float x, y, z;
+		} D3DVECTOR, *LPD3DVECTOR;
+
+		ID3D11Buffer* m_lightBuffer;
+
+		// Per-instance data (must be 16 byte aligned)
+		__declspec(align(16)) struct PlaneInstanceData
+		{
+			XMMATRIX WorldMatrix;
+			XMMATRIX InverseTransposeWorldMatrix;
+		};
+
+		struct MatrixBufferType
+		{
+			XMMATRIX world;
+			XMMATRIX view;
+			XMMATRIX projection;
+		};
+
+		struct LightBufferType
+		{
+			XMFLOAT4 diffuseColor;
+			XMFLOAT3 lightDirection;
+			float padding;  // Added extra padding so structure is a multiple of 16 for CreateBuffer function requirements.
+		};
 
 
 		// Variables used with the rendering loop.

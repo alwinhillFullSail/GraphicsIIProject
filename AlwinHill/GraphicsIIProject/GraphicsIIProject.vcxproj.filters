@@ -58,6 +58,9 @@
     <Image Include="SkyboxOcean.dds">
       <Filter>Assets</Filter>
     </Image>
+    <Image Include="amanshome.dds">
+      <Filter>Assets</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -125,6 +128,12 @@
       <Filter>Content</Filter>
     </FxCompile>
     <FxCompile Include="Content\VS_SkyboxShader.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\PS_Directional.hlsl">
+      <Filter>Content</Filter>
+    </FxCompile>
+    <FxCompile Include="Content\VS_Directional.hlsl">
       <Filter>Content</Filter>
     </FxCompile>
   </ItemGroup>

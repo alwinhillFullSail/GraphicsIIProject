@@ -31,6 +31,7 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 	m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc2, &samplerS2);
 
 	m_deviceResources->GetD3DDeviceContext()->PSSetSamplers(1, 1, &samplerS2);
+	m_deviceResources->GetD3DDeviceContext()->PSSetSamplers(0, 1, &samplerS2);
 
 
 	//ModelData for each model loaded... increase everytime new model is added
@@ -41,6 +42,55 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 	CreateDeviceDependentResources();
 	CreateWindowSizeDependentResources();
 
+
+
+	//LIGHTING STUFF 
+
+	//D3D11_SAMPLER_DESC samplerDesc;
+	//samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	//samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	//samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	//samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	//samplerDesc.MipLODBias = 0.0f;
+	//samplerDesc.MaxAnisotropy = 1;
+	//samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+	//samplerDesc.BorderColor[0] = 0;
+	//samplerDesc.BorderColor[1] = 0;
+	//samplerDesc.BorderColor[2] = 0;
+	//samplerDesc.BorderColor[3] = 0;
+	//samplerDesc.MinLOD = 0;
+	//samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+	//// Create the texture sampler state.
+	//m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc, &m_sampleState);
+
+	D3D11_BUFFER_DESC lightBufferDesc;
+	lightBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	lightBufferDesc.ByteWidth = sizeof(LightBufferType);
+	lightBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	lightBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	lightBufferDesc.MiscFlags = 0;
+	lightBufferDesc.StructureByteStride = 0;
+
+	// Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
+	m_deviceResources->GetD3DDevice()->CreateBuffer(&lightBufferDesc, NULL, &m_lightBuffer);
+
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	unsigned int bufferNumber;
+	MatrixBufferType* dataPtr;
+	LightBufferType* dataPtr2;
+
+	m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	dataPtr2 = (LightBufferType*)mappedResource.pData;
+	dataPtr2->diffuseColor = XMFLOAT4(0.2, 1, 0.2, 1);
+	dataPtr2->lightDirection = XMFLOAT3(1, 1, 1);
+	dataPtr2->padding = 0.0f;
+
+	m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
+	bufferNumber = 0;
+	m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
+
+	lightIndexCount = 3;
 }
 
 //Function to load models from .obj files
@@ -234,7 +284,7 @@ void Sample3DSceneRenderer::Rotate(/*ModelViewProjectionConstantBuffer &modelVie
 	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(1.5, 0, 1.2) * XMMatrixRotationY(radians)));
 
 	//Translate MODEL 1 
-	XMStoreFloat4x4(&modelData[0].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-0.5, 0, 0.5) * XMMatrixRotationY(3.142)));
+	XMStoreFloat4x4(&modelData[0].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-0.5, 0, 0.5) * XMMatrixRotationY(radians)));
 	XMStoreFloat4x4(&modelData[1].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-1.5, -1.5, 0.5) * XMMatrixRotationY(3.142)));
 
 }
@@ -463,6 +513,7 @@ void Sample3DSceneRenderer::Render(void)
 	context->VSSetConstantBuffers1(0, 1, modelConstantBuffer.GetAddressOf(), nullptr, nullptr);
 	context->PSSetShader(skyboxPixelShader.Get(), nullptr, 0);
 	context->DrawIndexed(m_skyboxIndexCount, 0, 0);
+
 }
 
 void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
@@ -479,6 +530,11 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	//For Skybox
 	auto loadSkyboxVS = DX::ReadDataAsync(L"VS_SkyboxShader.cso");
 	auto loadSkyboxPS = DX::ReadDataAsync(L"PS_SkyboxShader.cso");
+
+	//For Lighting
+	auto loadDirShaderVS = DX::ReadDataAsync(L"VS_Directional.cso");
+	auto loadDirShaderPS = DX::ReadDataAsync(L"PS_Directional.cso");
+
 
 	// After the vertex shader file is loaded, create the shader and input layout.
 	auto createVSTask = loadVSTask.then([this](const std::vector<byte>& fileData)
@@ -551,8 +607,17 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		/*CD3D11_BUFFER_DESC constantBufferDesc(sizeof(ModelViewProjectionConstantBuffer), D3D11_BIND_CONSTANT_BUFFER);
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &skyboxConstantBuffer));*/
 	});
-	
 
+	//Light Shaders
+	auto createDirLightPS = loadDirShaderPS.then([this](const std::vector<byte>& fileData)
+	{
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &modelPixelShader));
+	});
+
+	/*auto createDirLightVS = loadDirShaderVS.then([this](const std::vector<byte>& fileData)
+	{
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &modelVertexShader));
+	});*/
 
 	// Once shaders are loaded, create the mesh.
 	auto createModelTask = (createModelVS && createModelPS).then([this]()
@@ -589,7 +654,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		D3D11_BUFFER_DESC instanceBuffDesc;
 		D3D11_SUBRESOURCE_DATA instanceData;
 
-		m_instanceCount = 4;
+		m_instanceCount = 5;
 		instances = new InstanceType[m_instanceCount];
 		for (size_t i = 0; i < m_instanceCount; i++)
 		{
@@ -704,7 +769,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	//Creating the skybox
 	auto skyBox = (createSkyboxPS && createSkyboxVS).then([this]()
 	{
-		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"SkyboxOcean.dds", (ID3D11Resource**)&skyboxTexture, &skyboxModelView);
+		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"amanshome.dds", (ID3D11Resource**)&skyboxTexture, &skyboxModelView);
 		static const VertexPositionColor skyboxVertices[] =
 		{
 			{ XMFLOAT3(-0.5f, -0.5f, -0.5f), XMFLOAT3(0.0f, 0.0f, 0.0f) },
@@ -779,4 +844,7 @@ void Sample3DSceneRenderer::ReleaseDeviceDependentResources(void)
 
 	modelVertexShader.Reset();
 	modelPixelShader.Reset();
+
+	m_lightBuffer->Release();
+	m_lightBuffer = 0;
 }

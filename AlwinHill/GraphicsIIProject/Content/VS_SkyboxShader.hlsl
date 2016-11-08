@@ -7,24 +7,24 @@ cbuffer ModelViewProjectionConstantBuffer : register (b0)
 
 struct VertexShaderInput
 {
-	float4 position : POSITION;
-	float4 uv : UV;
+	float3 position : POSITION;
+	float3 uv : UV;
 };
 
 struct PixelShaderInput
 {
 	float4 position : SV_POSITION;
-	float4 uv : UV;
+	float3 uv : UV;
 };
 
 PixelShaderInput main(VertexShaderInput input)
 {
 	PixelShaderInput output;
 
-	float4 position = float4(input.position);
+	float4 position = float4(input.position, 1.0);
 
 	// Change the position vector to be 4 units for proper matrix calculations.
-	input.position.w = 1.0f;
+	//input.position.w = 1.0f;
 
 	// Calculate the position of the vertex against the world, view, and projection matrices.
 	position = mul(position, worldMatrix);

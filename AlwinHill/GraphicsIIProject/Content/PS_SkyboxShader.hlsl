@@ -2,7 +2,7 @@
 struct PixelShaderInput
 {
 	float4 position : SV_POSITION;
-	float4 uv : UV;
+	float3 uv : UV;
 	//float4 normal : NORMAL
 };
 
