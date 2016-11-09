@@ -111,6 +111,8 @@ namespace DX11UWA
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>	modelPixelShader;
 		Microsoft::WRL::ComPtr<ID3D11InputLayout>	modelInputLayout;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		modelConstantBuffer;
+		Microsoft::WRL::ComPtr<ID3D11BlendState>	blendState;
+
 
 		//Skybox Variables
 		int											m_instanceCount;
@@ -122,7 +124,7 @@ namespace DX11UWA
 		int lightIndexCount;
 
 		ID3D11Buffer* m_lightBuffer;
-
+		float xDir;
 		struct LightBufferType
 		{
 			XMFLOAT4 diffuseColor;

@@ -43,27 +43,8 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 	CreateWindowSizeDependentResources();
 
 
-
 	//LIGHTING STUFF 
-
-	//D3D11_SAMPLER_DESC samplerDesc;
-	//samplerDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-	//samplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-	//samplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-	//samplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-	//samplerDesc.MipLODBias = 0.0f;
-	//samplerDesc.MaxAnisotropy = 1;
-	//samplerDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
-	//samplerDesc.BorderColor[0] = 0;
-	//samplerDesc.BorderColor[1] = 0;
-	//samplerDesc.BorderColor[2] = 0;
-	//samplerDesc.BorderColor[3] = 0;
-	//samplerDesc.MinLOD = 0;
-	//samplerDesc.MaxLOD = D3D11_FLOAT32_MAX;
-
-	//// Create the texture sampler state.
-	//m_deviceResources->GetD3DDevice()->CreateSamplerState(&samplerDesc, &m_sampleState);
-
+	spot = false; point = false; dir = false;
 	D3D11_BUFFER_DESC lightBufferDesc;
 	lightBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
 	lightBufferDesc.ByteWidth = sizeof(LightBufferType);
@@ -73,21 +54,16 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 	lightBufferDesc.StructureByteStride = 0;
 
 	// Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
-	m_deviceResources->GetD3DDevice()->CreateBuffer(&lightBufferDesc, NULL, &m_lightBuffer);
+	m_deviceResources->GetD3DDevice()->CreateBuffer(&lightBufferDesc, nullptr, &m_lightBuffer);
+	
+	//For changing Point light dir
+	xDir = 5.0f;
 
-	/*D3D11_MAPPED_SUBRESOURCE mappedResource;
-	unsigned int bufferNumber;
-	LightBufferType* dataPtr2;
+	// Alpha Blending
+	D3D11_RENDER_TARGET_BLEND_DESC rtbDesc = { true, D3D11_BLEND_SRC_ALPHA, D3D11_BLEND_INV_SRC_ALPHA, D3D11_BLEND_OP_ADD, D3D11_BLEND_ONE, D3D11_BLEND_ZERO, D3D11_BLEND_OP_ADD, D3D11_COLOR_WRITE_ENABLE_ALL };
+	D3D11_BLEND_DESC blendDesc = { true, true, rtbDesc };
 
-	m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	dataPtr2 = (LightBufferType*)mappedResource.pData;
-	dataPtr2->diffuseColor = XMFLOAT4(0.2, 1, 0.2, 1);
-	dataPtr2->lightDirection = XMFLOAT3(-5, 1, 1);
-	dataPtr2->padding = 0.0f;
-
-	m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
-	bufferNumber = 0;
-	m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);*/
+	m_deviceResources->GetD3DDevice()->CreateBlendState(&blendDesc, &blendState);
 }
 
 //Function to load models from .obj files
@@ -275,6 +251,12 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 		XMVECTOR lightDir = XMVectorSet(-lightPos.x, -lightPos.y, -lightPos.z, 1.0f);
 		lightDir = XMVector3Normalize(lightDir);
 		XMStoreFloat3(&DirLightDir, lightDir);
+
+		/*xDir -= 0.1f;
+		if (xDir < -5.0f)
+		{
+			xDir = 5.0f;
+		}*/
 	}
 
 	// Update or move camera here
@@ -420,12 +402,15 @@ void Sample3DSceneRenderer::Render(void)
 	}
 
 	auto context = m_deviceResources->GetD3DDeviceContext();
-	/*auto context2 = m_deviceResources->GetD3DDeviceContext();
-	auto context3 = m_deviceResources->GetD3DDeviceContext();*/
 
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
 	XMStoreFloat4x4(&modelData[0].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
 	XMStoreFloat4x4(&modelData[1].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
+
+	//For alpha blending
+	float blendFactor[] = { 1, 1, 1, 1 };
+	context->OMSetBlendState(blendState.Get(), blendFactor, 0xffffffff);
+
 
 	// Prepare the constant buffer to send it to the graphics device.
 	context->UpdateSubresource1(m_constantBuffer.Get(), 0, nullptr, &m_constantBufferData, 0, 0, 0);
@@ -559,8 +544,8 @@ void Sample3DSceneRenderer::Render(void)
 		LightBufferType* dataPtr2;
 		m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		dataPtr2 = (LightBufferType*)mappedResource.pData;
-		dataPtr2->diffuseColor = XMFLOAT4(0.2f, 1.0f, 0.2f, 1.0f);
-		dataPtr2->lightDirection = XMFLOAT3(0.0f, 5.0f, 1.0f);
+		dataPtr2->diffuseColor = XMFLOAT4(0.8f, 1.0f, 0.8f, 1.0f);
+		dataPtr2->lightDirection = XMFLOAT3(-15.0f, -15.0f, 2.0f);
 		dataPtr2->lightType = 2.0f;
 		m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
 		bufferNumber = 0;
@@ -573,9 +558,24 @@ void Sample3DSceneRenderer::Render(void)
 		LightBufferType* dataPtr2;
 		m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		dataPtr2 = (LightBufferType*)mappedResource.pData;
-		dataPtr2->diffuseColor = XMFLOAT4(0.2f, 1.0f, 0.2f, 1.0f);
+		dataPtr2->diffuseColor = XMFLOAT4(0.2f, 0.7f, 0.2f, 1.0f);
 		dataPtr2->lightDirection = XMFLOAT3(0.0f, 5.0f, 1.0f);
 		dataPtr2->lightType = 3.0f;
+		m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
+		bufferNumber = 0;
+		m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
+	}
+
+	if (!spot && !dir && !point)
+	{
+		D3D11_MAPPED_SUBRESOURCE mappedResource;
+		unsigned int bufferNumber;
+		LightBufferType* dataPtr2;
+		m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+		dataPtr2 = (LightBufferType*)mappedResource.pData;
+		dataPtr2->diffuseColor = XMFLOAT4(0.2f, 0.2f, 0.7f, 1.0f);
+		dataPtr2->lightDirection = XMFLOAT3(0.0f, 5.0f, 1.0f);
+		dataPtr2->lightType = 4.0f;
 		m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
 		bufferNumber = 0;
 		m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
@@ -734,10 +734,6 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 
 			instances[i].position = XMFLOAT3(x, y, z);
 		}
-		/*instances[0].position = XMFLOAT3(-2.5f, -1.5f, -2.0f);
-		instances[1].position = XMFLOAT3(-2.5f, 1.5f, -2.0f);
-		instances[2].position = XMFLOAT3(2.5f, -1.5f, -2.0f);
-		instances[3].position = XMFLOAT3(2.5f, 1.5f, -2.0f);*/
 
 		instanceBuffDesc.Usage = D3D11_USAGE_DEFAULT;
 		instanceBuffDesc.ByteWidth = sizeof(InstanceType) * m_instanceCount;

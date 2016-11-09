@@ -27,7 +27,7 @@ struct PixelShaderInput
 PixelShaderInput main(VertexShaderInput input)
 {
 	PixelShaderInput output;
-	float4 pos = float4(input.pos/* + input.instancePos*/, 1.0f);
+	float4 pos = float4(input.pos, 1.0f);
 
 	// Transform the vertex position into projected space.
 	matrix world = model;

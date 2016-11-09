@@ -39,40 +39,38 @@ float4 main(PixelInputType input) : SV_TARGET
 
 float4 textureColor;
 float3 lightDir;
-float3 coneDir = float3(-1, 5.0f, 1.0f);
+float3 coneDir = float3(-1, 3.0f, 1.0f);
 float lightIntensity;
 float lightRatio;
 float spotFactor;
 float surfaceRatio;
 float4 color;
-float coneRatio = 0.9;
+float coneRatio = 0.8;
+float alpha;
 
 //Directional Light
 if (lightType == 1)
 {
 	//// Sample the pixel color from the texture using the sampler at this texture coordinate location.
 	textureColor = shaderTexture.Sample(SampleType, input.tex);
+	alpha = textureColor.w;
+	// Invert the light direction for calculations.
+	lightDir = -lightDirection;
 
-	//// Invert the light direction for calculations.
-	//lightDir = -lightDirection;
+	// Calculate the amount of light on this pixel.
+	lightIntensity = saturate(dot(input.normal, lightDir));
 
-	//// Calculate the amount of light on this pixel.
-	//lightIntensity = saturate(dot(input.normal, lightDir));
+	lightRatio = clamp(dot(-lightDirection, input.normal), 0, 1);
+	lightIntensity = 4.5;
 
-	//// Determine the final amount of diffuse color based on the diffuse color combined with the light intensity.
-	//color = saturate(diffuseColor * lightIntensity + 0.15f);
-
-	//// Multiply the texture pixel and the final diffuse color to get the final pixel color result.
-	//color = color * textureColor;
-
-	lightRatio = clamp(dot(-lightDirection, input.normal), 0, 5);
-	color = lightRatio * diffuseColor * textureColor;
+	color = lightRatio * diffuseColor * textureColor * lightIntensity;
 }
 
 //Point Light
 if (lightType == 2)
 {
 	textureColor = shaderTexture.Sample(SampleType, input.tex);
+	alpha = textureColor.w;
 
 	lightDir = normalize(lightDirection - input.position);
 
@@ -85,6 +83,7 @@ if (lightType == 2)
 if (lightType == 3)
 {
 	textureColor = shaderTexture.Sample(SampleType, input.tex);
+	alpha = textureColor.w;
 
 	lightDir = normalize(lightDirection - input.position);
 
@@ -92,8 +91,19 @@ if (lightType == 3)
 
 	spotFactor = (surfaceRatio > coneRatio) ? 1 : 0;
 
+	lightRatio = clamp(dot(lightDirection, input.normal), 0, 1);
+
 	color = spotFactor * lightRatio * diffuseColor * textureColor;
 }
 
-return color;
+//Ambient Light
+if (lightType == 4)
+{
+	textureColor = shaderTexture.Sample(SampleType, input.tex);
+	alpha = textureColor.w;
+
+	color = diffuseColor * textureColor * 0.5f;
+}
+
+return float4(color.xyz, alpha);
 }
