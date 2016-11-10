@@ -17,6 +17,7 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 	m_currMousePos = nullptr;
 	m_prevMousePos = nullptr;
 	memset(&m_camera, 0, sizeof(XMFLOAT4X4));
+	memset(&m_camera2, 0, sizeof(XMFLOAT4X4));
 
 
 	D3D11_SAMPLER_DESC samplerDesc2;
@@ -236,8 +237,15 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources(void)
 	static const XMVECTORF32 at = { 0.0f, -0.1f, 0.0f, 0.0f };
 	static const XMVECTORF32 up = { 0.0f, 1.0f, 0.0f, 0.0f };
 
+	//Viewport 2
+	static const XMVECTORF32 eye2 = { 0.0f, 3.7f, 5.5f, 0.0f };
+	static const XMVECTORF32 at2 = { 0.0f, -0.1f, 0.0f, 0.0f };
+	static const XMVECTORF32 up2 = { 0.0f, 1.0f, 0.0f, 0.0f };
+
 	//CUBE
 	XMStoreFloat4x4(&m_camera, XMMatrixInverse(nullptr, XMMatrixLookAtLH(eye, at, up)));
+	XMStoreFloat4x4(&m_camera2, XMMatrixInverse(nullptr, XMMatrixLookAtLH(eye2, at2, up2)));
+
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
 
 	//Models
@@ -350,10 +358,16 @@ void Sample3DSceneRenderer::UpdateCamera(DX::StepTimer const& timer, float const
 			float dy = m_currMousePos->Position.Y - m_prevMousePos->Position.Y;
 
 			XMFLOAT4 pos = XMFLOAT4(m_camera._41, m_camera._42, m_camera._43, m_camera._44);
+			XMFLOAT4 pos2 = XMFLOAT4(m_camera2._41, m_camera2._42, m_camera2._43, m_camera2._44);
+
 
 			m_camera._41 = 0;
 			m_camera._42 = 0;
 			m_camera._43 = 0;
+
+			m_camera2._41 = 0;
+			m_camera2._42 = 0;
+			m_camera2._43 = 0;
 
 			XMMATRIX rotX = XMMatrixRotationX(dy * rotSpd * delta_time);
 			XMMATRIX rotY = XMMatrixRotationY(dx * rotSpd * delta_time);
@@ -362,11 +376,21 @@ void Sample3DSceneRenderer::UpdateCamera(DX::StepTimer const& timer, float const
 			temp_camera = XMMatrixMultiply(rotX, temp_camera);
 			temp_camera = XMMatrixMultiply(temp_camera, rotY);
 
+			XMMATRIX temp_camera2 = XMLoadFloat4x4(&m_camera2);
+			temp_camera2 = XMMatrixMultiply(rotX, temp_camera2);
+			temp_camera2 = XMMatrixMultiply(temp_camera2, rotY);
+
 			XMStoreFloat4x4(&m_camera, temp_camera);
+			XMStoreFloat4x4(&m_camera2, temp_camera2);
 
 			m_camera._41 = pos.x;
 			m_camera._42 = pos.y;
 			m_camera._43 = pos.z;
+
+			m_camera2._41 = pos2.x;
+			m_camera2._42 = pos2.y;
+			m_camera2._43 = pos2.z;
+
 		}
 		m_prevMousePos = m_currMousePos;
 	}
@@ -557,7 +581,7 @@ void Sample3DSceneRenderer::Draw(/*int lightType*/)
 		LightBufferType* dataPtr2;
 		m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		dataPtr2 = (LightBufferType*)mappedResource.pData;
-		dataPtr2->diffuseColor = XMFLOAT4(0.2f, 0.2f, 0.7f, 1.0f);
+		dataPtr2->diffuseColor = XMFLOAT4(0.4f, 0.4f, 0.2f, 1.0f);
 		dataPtr2->lightDirection = XMFLOAT3(0.0f, 5.0f, 1.0f);
 		dataPtr2->lightType = 4.0f;
 		m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
@@ -578,6 +602,7 @@ void Sample3DSceneRenderer::Render(void)
 	auto context = m_deviceResources->GetD3DDeviceContext();
 
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
+
 	XMStoreFloat4x4(&modelData[0].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
 	XMStoreFloat4x4(&modelData[1].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
 
@@ -603,6 +628,10 @@ void Sample3DSceneRenderer::Render(void)
 
 	m_deviceResources->GetD3DDeviceContext()->RSSetViewports(1, &viewports[0]);
 	Draw();
+	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera2))));
+	XMStoreFloat4x4(&modelData[0].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera2))));
+	XMStoreFloat4x4(&modelData[1].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera2))));
+
 	m_deviceResources->GetD3DDeviceContext()->RSSetViewports(1, &viewports[1]);
 	Draw();
 }

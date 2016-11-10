@@ -76,7 +76,7 @@ if (lightType == 2)
 
 	lightRatio = clamp(dot(input.normal, lightDir), 0, 1);
 
-	color = lightRatio * diffuseColor * textureColor;
+	color = lightRatio * diffuseColor * textureColor * 2.2;
 }
 
 //Spot Light
@@ -102,7 +102,7 @@ if (lightType == 4)
 	textureColor = shaderTexture.Sample(SampleType, input.tex);
 	alpha = textureColor.w;
 
-	color = diffuseColor * textureColor * 0.5f;
+	color = diffuseColor * textureColor * 0.8f;
 }
 
 return float4(color.xyz, alpha);
