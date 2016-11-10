@@ -64,6 +64,22 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 	D3D11_BLEND_DESC blendDesc = { true, true, rtbDesc };
 
 	m_deviceResources->GetD3DDevice()->CreateBlendState(&blendDesc, &blendState);
+
+	//Setting Up viewports
+	viewports[0].Width = m_deviceResources->GetScreenViewport().Width * 0.5;
+	viewports[0].Height = m_deviceResources->GetScreenViewport().Height;
+	viewports[0].TopLeftX = 0.0f;
+	viewports[0].MinDepth = 0.0f;
+	viewports[0].MaxDepth = 1.0f;
+	viewports[0].TopLeftY = 0.0f;
+
+	viewports[1].Width = m_deviceResources->GetScreenViewport().Width * 0.5;
+	viewports[1].Height = m_deviceResources->GetScreenViewport().Height;
+	viewports[1].MinDepth = 0.0f;
+	viewports[1].MaxDepth = 1.0f;
+	viewports[1].TopLeftX = (m_deviceResources->GetScreenViewport().Width * 0.5);
+	viewports[1].TopLeftY = 0.0f;
+
 }
 
 //Function to load models from .obj files
@@ -392,25 +408,13 @@ void Sample3DSceneRenderer::StopTracking(void)
 	m_tracking = false;
 }
 
-// Renders one frame using the vertex and pixel shaders.
-void Sample3DSceneRenderer::Render(void)
+void Sample3DSceneRenderer::Draw(/*int lightType*/)
 {
-	// Loading is asynchronous. Only draw geometry after it's loaded.
-	if (!m_loadingComplete)
-	{
-		return;
-	}
-
 	auto context = m_deviceResources->GetD3DDeviceContext();
-
-	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
-	XMStoreFloat4x4(&modelData[0].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
-	XMStoreFloat4x4(&modelData[1].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
 
 	//For alpha blending
 	float blendFactor[] = { 1, 1, 1, 1 };
 	context->OMSetBlendState(blendState.Get(), blendFactor, 0xffffffff);
-
 
 	// Prepare the constant buffer to send it to the graphics device.
 	context->UpdateSubresource1(m_constantBuffer.Get(), 0, nullptr, &m_constantBufferData, 0, 0, 0);
@@ -503,26 +507,6 @@ void Sample3DSceneRenderer::Render(void)
 	context->DrawIndexed(m_skyboxIndexCount, 0, 0);
 
 
-	//Directional Lighting
-	if (m_kbuttons['1'])
-	{
-		dir = !dir;
-		point = false;
-		spot = false;
-	}
-	if (m_kbuttons['2'])
-	{
-		point = !point;
-		dir = false;
-		spot = false;
-	}
-	if (m_kbuttons['3'])
-	{
-		spot = !spot;
-		dir = false;
-		point = false;
-	}
-
 	if (dir)
 	{
 		D3D11_MAPPED_SUBRESOURCE mappedResource;
@@ -580,7 +564,47 @@ void Sample3DSceneRenderer::Render(void)
 		bufferNumber = 0;
 		m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
 	}
+}
 
+// Renders one frame using the vertex and pixel shaders.
+void Sample3DSceneRenderer::Render(void)
+{
+	// Loading is asynchronous. Only draw geometry after it's loaded.
+	if (!m_loadingComplete)
+	{
+		return;
+	}
+
+	auto context = m_deviceResources->GetD3DDeviceContext();
+
+	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
+	XMStoreFloat4x4(&modelData[0].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
+	XMStoreFloat4x4(&modelData[1].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
+
+	//Directional Lighting
+	if (m_kbuttons['1'])
+	{
+		dir = !dir;
+		point = false;
+		spot = false;
+	}
+	if (m_kbuttons['2'])
+	{
+		point = !point;
+		dir = false;
+		spot = false;
+	}
+	if (m_kbuttons['3'])
+	{
+		spot = !spot;
+		dir = false;
+		point = false;
+	}
+
+	m_deviceResources->GetD3DDeviceContext()->RSSetViewports(1, &viewports[0]);
+	Draw();
+	m_deviceResources->GetD3DDeviceContext()->RSSetViewports(1, &viewports[1]);
+	Draw();
 }
 
 void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
@@ -681,10 +705,6 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &modelPixelShader));
 	});
 
-	auto createDirLightVS = loadDirShaderVS.then([this](const std::vector<byte>& fileData)
-	{
-		//DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &modelVertexShader));
-	});
 
 
 

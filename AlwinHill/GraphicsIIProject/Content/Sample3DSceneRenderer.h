@@ -52,6 +52,7 @@ namespace DX11UWA
 		void SetMousePosition(const Windows::UI::Input::PointerPoint^ pos);
 		void SetInputDeviceData(const char* kb, const Windows::UI::Input::PointerPoint^ pos);
 		void SkyboxRenderer(DirectX::XMFLOAT3 pos);
+		void Draw(/*int lightType*/);
 
 		//CComPtr<ID3D11Texture2D> diffuseTexture;
 		CComPtr<ID3D11Texture2D> modelTexture;
@@ -133,6 +134,9 @@ namespace DX11UWA
 		};
 		XMFLOAT3 DirLightDir;
 		bool dir = false, spot = false, point = false;
+
+		//For multiple viewports
+		D3D11_VIEWPORT viewports[2];
 
 
 		// Variables used with the rendering loop.
