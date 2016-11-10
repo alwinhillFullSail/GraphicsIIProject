@@ -189,6 +189,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <Image Include="amanshome.dds" />
+    <Image Include="archangel_dark.dds" />
     <Image Include="Assets\LockScreenLogo.scale-200.png" />
     <Image Include="Assets\SplashScreen.scale-200.png" />
     <Image Include="Assets\Square150x150Logo.scale-200.png" />
@@ -199,6 +200,7 @@
     <Image Include="BStrongoli_D_Sword.dds" />
     <Image Include="Diffuse_Knight_Cleansed.dds" />
     <Image Include="dragonknight_hr-wind.dds" />
+    <Image Include="mercury.dds" />
     <Image Include="SkyboxOcean.dds" />
     <Image Include="succubus-fire.dds" />
     <Image Include="TwoSwords.dds" />
@@ -322,6 +324,13 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="succubus-fire.obj">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="archangel_dark.obj">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
       <FileType>Document</FileType>

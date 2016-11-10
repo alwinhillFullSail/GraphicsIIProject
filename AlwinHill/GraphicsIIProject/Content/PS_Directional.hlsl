@@ -39,7 +39,9 @@ float4 main(PixelInputType input) : SV_TARGET
 
 float4 textureColor;
 float3 lightDir;
-float3 coneDir = float3(-1, 3.0f, 1.0f);
+//float3 coneDir = float3(-1, 3.0f, 1.0f);
+float3 coneDir = float3(0.0f, 2.0f, 1.0f);
+
 float lightIntensity;
 float lightRatio;
 float spotFactor;
@@ -87,13 +89,13 @@ if (lightType == 3)
 
 	lightDir = normalize(lightDirection - input.position);
 
-	surfaceRatio = clamp(dot(-lightDir, coneDir), 0, 1);
+	surfaceRatio = clamp(dot(-lightDir, coneDir), 0, 4);
 
 	spotFactor = (surfaceRatio > coneRatio) ? 1 : 0;
 
 	lightRatio = clamp(dot(lightDirection, input.normal), 0, 1);
 
-	color = spotFactor * lightRatio * diffuseColor * textureColor;
+	color = spotFactor * lightRatio * diffuseColor * textureColor * 1.7f;
 }
 
 //Ambient Light

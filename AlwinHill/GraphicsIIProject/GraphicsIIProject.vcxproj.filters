@@ -61,6 +61,12 @@
     <Image Include="amanshome.dds">
       <Filter>Assets</Filter>
     </Image>
+    <Image Include="archangel_dark.dds">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="mercury.dds">
+      <Filter>Assets</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -72,6 +78,7 @@
     <None Include="dragonknight.obj" />
     <None Include="dragonknight_hr-wind.obj" />
     <None Include="succubus-fire.obj" />
+    <None Include="archangel_dark.obj" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Common\DDSTextureLoader.cpp">

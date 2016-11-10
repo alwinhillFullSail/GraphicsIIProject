@@ -56,7 +56,7 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 
 	// Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
 	m_deviceResources->GetD3DDevice()->CreateBuffer(&lightBufferDesc, nullptr, &m_lightBuffer);
-	
+
 	//For changing Point light dir
 	xDir = 5.0f;
 
@@ -228,9 +228,14 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources(void)
 	//Projection for Cube
 	XMStoreFloat4x4(&m_constantBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
 
+	//For skybox
+	XMStoreFloat4x4(&skyboxConstantBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
+
 	//Projection for Model1
 	XMStoreFloat4x4(&modelData[0].m_constantBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
 	XMStoreFloat4x4(&modelData[1].m_constantBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
+	XMStoreFloat4x4(&modelData[2].m_constantBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
+
 
 	// Eye is at (0,0.7,1.5), looking at point (0,-0.1,0) with the up-vector along the y-axis.
 	static const XMVECTORF32 eye = { 0.0f, 0.7f, -2.5f, 0.0f };
@@ -238,19 +243,24 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources(void)
 	static const XMVECTORF32 up = { 0.0f, 1.0f, 0.0f, 0.0f };
 
 	//Viewport 2
-	static const XMVECTORF32 eye2 = { 0.0f, 3.7f, 5.5f, 0.0f };
+	static const XMVECTORF32 eye2 = { 0.0f, 4.7f, 7.5f, 0.0f };
 	static const XMVECTORF32 at2 = { 0.0f, -0.1f, 0.0f, 0.0f };
 	static const XMVECTORF32 up2 = { 0.0f, 1.0f, 0.0f, 0.0f };
 
-	//CUBE
 	XMStoreFloat4x4(&m_camera, XMMatrixInverse(nullptr, XMMatrixLookAtLH(eye, at, up)));
 	XMStoreFloat4x4(&m_camera2, XMMatrixInverse(nullptr, XMMatrixLookAtLH(eye2, at2, up2)));
 
+	//CUBE
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
+
+	//Skybox
+	XMStoreFloat4x4(&skyboxConstantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
+
 
 	//Models
 	XMStoreFloat4x4(&modelData[0].m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
 	XMStoreFloat4x4(&modelData[1].m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
+	XMStoreFloat4x4(&modelData[2].m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
 
 }
 
@@ -291,11 +301,16 @@ void Sample3DSceneRenderer::Update(DX::StepTimer const& timer)
 void Sample3DSceneRenderer::Rotate(float radians)
 {
 	// Prepare to pass the updated model matrix to the shader
-	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(0, -3, 0) * XMMatrixRotationY(radians)));
+	XMStoreFloat4x4(&m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(0, 3, 0) * XMMatrixRotationY(radians)));
 
 	//Translate MODEL 1 
-	XMStoreFloat4x4(&modelData[0].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-0.5, 0, 0.5) * XMMatrixRotationY(3.142)));
-	XMStoreFloat4x4(&modelData[1].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-1.5, -1.5, 0.5) * XMMatrixRotationY(3.142)));
+	XMStoreFloat4x4(&modelData[0].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(0, 0, -2.5) * XMMatrixRotationY(3.142)));
+	XMStoreFloat4x4(&modelData[1].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-2.5, 0, 0.5) * XMMatrixRotationY(3.142)));
+	XMStoreFloat4x4(&modelData[2].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(2.5, 0, 0.5) * XMMatrixRotationY(3.142)));
+
+	//Skybox
+	//XMStoreFloat4x4(&skyboxConstantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(0, 3, 0) * XMMatrixRotationY(radians)));
+
 }
 
 void Sample3DSceneRenderer::SkyboxRenderer(XMFLOAT3 pos)
@@ -354,42 +369,55 @@ void Sample3DSceneRenderer::UpdateCamera(DX::StepTimer const& timer, float const
 	{
 		if (m_currMousePos->Properties->IsRightButtonPressed && m_prevMousePos)
 		{
-			float dx = m_currMousePos->Position.X - m_prevMousePos->Position.X;
-			float dy = m_currMousePos->Position.Y - m_prevMousePos->Position.Y;
+			//597 x = half screen
+			if (m_currMousePos->Position.X < (m_deviceResources->GetScreenViewport().Width * 0.5))
+			{
+				float dx = m_currMousePos->Position.X - m_prevMousePos->Position.X;
+				float dy = m_currMousePos->Position.Y - m_prevMousePos->Position.Y;
 
-			XMFLOAT4 pos = XMFLOAT4(m_camera._41, m_camera._42, m_camera._43, m_camera._44);
-			XMFLOAT4 pos2 = XMFLOAT4(m_camera2._41, m_camera2._42, m_camera2._43, m_camera2._44);
+				XMFLOAT4 pos = XMFLOAT4(m_camera._41, m_camera._42, m_camera._43, m_camera._44);
 
+				m_camera._41 = 0;
+				m_camera._42 = 0;
+				m_camera._43 = 0;
 
-			m_camera._41 = 0;
-			m_camera._42 = 0;
-			m_camera._43 = 0;
+				XMMATRIX rotX = XMMatrixRotationX(dy * rotSpd * delta_time);
+				XMMATRIX rotY = XMMatrixRotationY(dx * rotSpd * delta_time);
 
-			m_camera2._41 = 0;
-			m_camera2._42 = 0;
-			m_camera2._43 = 0;
+				XMMATRIX temp_camera = XMLoadFloat4x4(&m_camera);
+				temp_camera = XMMatrixMultiply(rotX, temp_camera);
+				temp_camera = XMMatrixMultiply(temp_camera, rotY);
 
-			XMMATRIX rotX = XMMatrixRotationX(dy * rotSpd * delta_time);
-			XMMATRIX rotY = XMMatrixRotationY(dx * rotSpd * delta_time);
+				XMStoreFloat4x4(&m_camera, temp_camera);
 
-			XMMATRIX temp_camera = XMLoadFloat4x4(&m_camera);
-			temp_camera = XMMatrixMultiply(rotX, temp_camera);
-			temp_camera = XMMatrixMultiply(temp_camera, rotY);
+				m_camera._41 = pos.x;
+				m_camera._42 = pos.y;
+				m_camera._43 = pos.z;
+			}
 
-			XMMATRIX temp_camera2 = XMLoadFloat4x4(&m_camera2);
-			temp_camera2 = XMMatrixMultiply(rotX, temp_camera2);
-			temp_camera2 = XMMatrixMultiply(temp_camera2, rotY);
+			if (m_currMousePos->Position.X > (m_deviceResources->GetScreenViewport().Width * 0.5))
+			{
+				float dx = m_currMousePos->Position.X - m_prevMousePos->Position.X;
+				float dy = m_currMousePos->Position.Y - m_prevMousePos->Position.Y;
+				XMFLOAT4 pos2 = XMFLOAT4(m_camera2._41, m_camera2._42, m_camera2._43, m_camera2._44);
 
-			XMStoreFloat4x4(&m_camera, temp_camera);
-			XMStoreFloat4x4(&m_camera2, temp_camera2);
+				m_camera2._41 = 0;
+				m_camera2._42 = 0;
+				m_camera2._43 = 0;
 
-			m_camera._41 = pos.x;
-			m_camera._42 = pos.y;
-			m_camera._43 = pos.z;
+				XMMATRIX rotX = XMMatrixRotationX(dy * rotSpd * delta_time);
+				XMMATRIX rotY = XMMatrixRotationY(dx * rotSpd * delta_time);
 
-			m_camera2._41 = pos2.x;
-			m_camera2._42 = pos2.y;
-			m_camera2._43 = pos2.z;
+				XMMATRIX temp_camera2 = XMLoadFloat4x4(&m_camera2);
+				temp_camera2 = XMMatrixMultiply(rotX, temp_camera2);
+				temp_camera2 = XMMatrixMultiply(temp_camera2, rotY);
+
+				XMStoreFloat4x4(&m_camera2, temp_camera2);
+
+				m_camera2._41 = pos2.x;
+				m_camera2._42 = pos2.y;
+				m_camera2._43 = pos2.z;
+			}
 
 		}
 		m_prevMousePos = m_currMousePos;
@@ -566,7 +594,7 @@ void Sample3DSceneRenderer::Draw(/*int lightType*/)
 		LightBufferType* dataPtr2;
 		m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 		dataPtr2 = (LightBufferType*)mappedResource.pData;
-		dataPtr2->diffuseColor = XMFLOAT4(0.2f, 0.7f, 0.2f, 1.0f);
+		dataPtr2->diffuseColor = XMFLOAT4(0.2f, 0.5f, 0.4f, 1.0f);
 		dataPtr2->lightDirection = XMFLOAT3(0.0f, 5.0f, 1.0f);
 		dataPtr2->lightType = 3.0f;
 		m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
@@ -603,8 +631,12 @@ void Sample3DSceneRenderer::Render(void)
 
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
 
-	XMStoreFloat4x4(&modelData[0].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
-	XMStoreFloat4x4(&modelData[1].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
+	for (size_t i = 0; i < modelData.size(); i++)
+	{
+		XMStoreFloat4x4(&modelData[i].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
+	}
+
+	XMStoreFloat4x4(&skyboxConstantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
 
 	//Directional Lighting
 	if (m_kbuttons['1'])
@@ -628,9 +660,16 @@ void Sample3DSceneRenderer::Render(void)
 
 	m_deviceResources->GetD3DDeviceContext()->RSSetViewports(1, &viewports[0]);
 	Draw();
+
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera2))));
-	XMStoreFloat4x4(&modelData[0].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera2))));
-	XMStoreFloat4x4(&modelData[1].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera2))));
+
+	for (size_t i = 0; i < modelData.size(); i++)
+	{
+		XMStoreFloat4x4(&modelData[i].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera2))));
+	}
+
+
+	XMStoreFloat4x4(&skyboxConstantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera2))));
 
 	m_deviceResources->GetD3DDeviceContext()->RSSetViewports(1, &viewports[1]);
 	Draw();
@@ -711,21 +750,10 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	{
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateVertexShader(&fileData[0], fileData.size(), nullptr, &skyboxVertexShader));
 
-		/*static const D3D11_INPUT_ELEMENT_DESC vertexDesc[] =
-		{
-			{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-			{ "TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		};
-
-		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateInputLayout(vertexDesc, ARRAYSIZE(vertexDesc), &fileData[0], fileData.size(), &skyboxInputLayout));*/
-
 	});
 	auto createSkyboxPS = loadSkyboxPS.then([this](const std::vector<byte>& fileData)
 	{
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &skyboxPixelShader));
-
-		/*CD3D11_BUFFER_DESC constantBufferDesc(sizeof(ModelViewProjectionConstantBuffer), D3D11_BIND_CONSTANT_BUFFER);
-		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&constantBufferDesc, nullptr, &skyboxConstantBuffer));*/
 	});
 
 	//LIGHT Shaders
@@ -733,9 +761,6 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	{
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreatePixelShader(&fileData[0], fileData.size(), nullptr, &modelPixelShader));
 	});
-
-
-
 
 
 	// Once shaders are loaded, create the mesh.
@@ -781,7 +806,7 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 			float y = (rand() % 6) - 3;
 			float z = (rand() % 6);
 
-			instances[i].position = XMFLOAT3(x, y, z);
+			instances[i].position = XMFLOAT3(x, 0, 3.5f);
 		}
 
 		instanceBuffDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -826,6 +851,33 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		CD3D11_BUFFER_DESC indexBufferDesc(sizeof(unsigned short) * object.indices.size(), D3D11_BIND_INDEX_BUFFER);
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&indexBufferDesc, &indexBufferData, &modelData[1].m_indexBuffer));
 	});
+
+	auto createModel3 = (createModelVS && createModelPS).then([this]()
+	{
+		srand(time(NULL));
+
+		//DDS Loader
+		HRESULT res = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"archangel_dark.dds", (ID3D11Resource**)&modelData[2].modelTexture, &modelData[2].modelView);
+
+		//Load Model1
+		ObjForLoading object = LoadModel("archangel_dark.obj");
+
+		D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
+		vertexBufferData.pSysMem = object.vertices.data();
+		vertexBufferData.SysMemPitch = 0;
+		vertexBufferData.SysMemSlicePitch = 0;
+		CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(XMFLOAT3) * object.vertices.size(), D3D11_BIND_VERTEX_BUFFER);
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&vertexBufferDesc, &vertexBufferData, &modelData[2].m_vertexBuffer));
+
+		modelData[2].m_indexCount = object.indices.size();
+		D3D11_SUBRESOURCE_DATA indexBufferData = { 0 };
+		indexBufferData.pSysMem = object.indices.data();
+		indexBufferData.SysMemPitch = 0;
+		indexBufferData.SysMemSlicePitch = 0;
+		CD3D11_BUFFER_DESC indexBufferDesc(sizeof(unsigned short) * object.indices.size(), D3D11_BIND_INDEX_BUFFER);
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&indexBufferDesc, &indexBufferData, &modelData[2].m_indexBuffer));
+	});
+
 
 	auto createCubeTask = (createPSTask && createVSTask).then([this]()
 	{
@@ -884,7 +936,9 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	//Creating the skybox
 	auto skyBox = (createSkyboxPS && createSkyboxVS).then([this]()
 	{
-		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"amanshome.dds", (ID3D11Resource**)&skyboxTexture, &skyboxModelView);
+		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"mercury.dds", (ID3D11Resource**)&skyboxTexture, &skyboxModelView);
+		XMFLOAT3 skyOffset = XMFLOAT3(1, 1, 1);
+
 		static const VertexPositionColor skyboxVertices[] =
 		{
 			{ XMFLOAT3(-0.5f, -0.5f, -0.5f), XMFLOAT3(0.0f, 0.0f, 0.0f) },
@@ -938,12 +992,28 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	// Once the cube is loaded, the object is ready to be rendered.
 	createCubeTask.then([this]()
 	{
-		m_loadingComplete = true;
+
 	});
 
 	createModelTask.then([this]()
 	{
 		m_loadingComplete = true;
+
+	});
+
+	createModel2.then([this]()
+	{
+
+	});
+
+	createModel3.then([this]()
+	{
+
+	});
+
+	skyBox.then([this]()
+	{
+
 	});
 }
 

@@ -23,9 +23,6 @@ PixelShaderInput main(VertexShaderInput input)
 
 	float4 position = float4(input.position, 1.0);
 
-	// Change the position vector to be 4 units for proper matrix calculations.
-	//input.position.w = 1.0f;
-
 	// Calculate the position of the vertex against the world, view, and projection matrices.
 	position = mul(position, worldMatrix);
 	position = mul(position, viewMatrix);
@@ -34,7 +31,6 @@ PixelShaderInput main(VertexShaderInput input)
 	// Send the unmodified position through to the pixel shader.
 	output.position = position;
 	output.uv = input.position;
-	//output.normal = input.normal;
 
 	return output;
 }

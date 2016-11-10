@@ -118,6 +118,7 @@ namespace DX11UWA
 		//Skybox Variables
 		int											m_instanceCount;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_instanceBuffer;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		skyboxConstantBuffer;
 
 
 		//For Lighting
