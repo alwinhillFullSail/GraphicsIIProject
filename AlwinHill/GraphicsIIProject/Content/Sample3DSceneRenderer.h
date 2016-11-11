@@ -99,6 +99,8 @@ namespace DX11UWA
 			Microsoft::WRL::ComPtr<ID3D11Buffer>		m_vertexBuffer;
 			Microsoft::WRL::ComPtr<ID3D11Buffer>		m_indexBuffer;
 			CComPtr<ID3D11ShaderResourceView>			modelView;
+			CComPtr<ID3D11ShaderResourceView>			normalMapView;
+
 			// System resources for cube geometry.
 			ModelViewProjectionConstantBuffer			m_constantBufferData;
 			uint32										m_indexCount;

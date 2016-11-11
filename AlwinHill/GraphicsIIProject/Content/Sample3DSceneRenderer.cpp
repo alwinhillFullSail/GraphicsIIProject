@@ -155,11 +155,11 @@ ObjForLoading Sample3DSceneRenderer::LoadModel(char *_path)
 
 				std::getline(ss, str, delimiter);
 				uvIndex[ndx] = stoi(str);
-				uvIndices.push_back(vertexIndex[ndx]);
+				uvIndices.push_back(uvIndex[ndx]);
 
 				std::getline(ss, str, ' ');
 				normalIndex[ndx] = stoi(str);
-				normalIndices.push_back(vertexIndex[ndx]);
+				normalIndices.push_back(normalIndex[ndx]);
 
 				++ndx;
 			}
@@ -184,16 +184,26 @@ ObjForLoading Sample3DSceneRenderer::LoadModel(char *_path)
 	}
 
 	std::vector<XMFLOAT3> objectVertices;
-	for (size_t i = 0; i < (temp_verts.size()); i++)
+	for (size_t i = 0; i < (outIndices.size()); i++)
 	{
-		objectVertices.push_back(temp_verts[i]);
+		/*objectVertices.push_back(temp_verts[i]);
 		objectVertices.push_back(temp_uv[i]);
-		objectVertices.push_back(temp_normal[i]);
+		objectVertices.push_back(temp_normal[i]);*/
+		objectVertices.push_back(temp_verts[outIndices[i]]);
+		objectVertices.push_back(temp_uv[outUV[i]]);
+		objectVertices.push_back(temp_normal[outNormals[i]]);
+	}
+
+	std::vector<unsigned short> test;
+	for (size_t i = 0; i < objectVertices.size(); i++)
+	{
+		test.push_back(i);
 	}
 
 	ObjForLoading data;
 	data.vertices = objectVertices;
-	data.indices = outIndices;
+	data.indices = test;
+
 
 	return data;
 }
@@ -202,8 +212,8 @@ ObjForLoading Sample3DSceneRenderer::LoadModel(char *_path)
 void Sample3DSceneRenderer::CreateWindowSizeDependentResources(void)
 {
 	Size outputSize = m_deviceResources->GetOutputSize();
-	float aspectRatio = outputSize.Width / outputSize.Height;
-	float fovAngleY = 70.0f * XM_PI / 180.0f;
+	float aspectRatio = (outputSize.Width * 0.5) / outputSize.Height;
+	float fovAngleY = 50.0f * XM_PI / 180.0f;
 
 	// This is a simple example of change that can be made when the app is in
 	// portrait or snapped view.
@@ -305,7 +315,7 @@ void Sample3DSceneRenderer::Rotate(float radians)
 
 	//Translate MODEL 1 
 	XMStoreFloat4x4(&modelData[0].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(0, 0, -2.5) * XMMatrixRotationY(3.142)));
-	XMStoreFloat4x4(&modelData[1].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-2.5, 0, 0.5) * XMMatrixRotationY(3.142)));
+	XMStoreFloat4x4(&modelData[1].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-2.5, 0, 0.5) * XMMatrixRotationY(3.142)) * XMMatrixScaling(10, 10, 10));
 	XMStoreFloat4x4(&modelData[2].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(2.5, 0, 0.5) * XMMatrixRotationY(3.142)));
 
 	//Skybox
@@ -490,7 +500,7 @@ void Sample3DSceneRenderer::Draw(/*int lightType*/)
 	//Loading textures for models
 	for (size_t i = 0; i < modelData.size(); i++)
 	{
-		ID3D11ShaderResourceView *texViews2[] = { { modelData[i].modelView } };
+		ID3D11ShaderResourceView *texViews2[] = { { modelData[i].modelView }, {modelData[i].normalMapView }};
 		context->PSSetShaderResources(1, 1, texViews2);
 
 		context->UpdateSubresource1(modelConstantBuffer.Get(), 0, NULL, &modelData[i].m_constantBufferData, 0, 0, 0);
@@ -630,12 +640,10 @@ void Sample3DSceneRenderer::Render(void)
 	auto context = m_deviceResources->GetD3DDeviceContext();
 
 	XMStoreFloat4x4(&m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
-
 	for (size_t i = 0; i < modelData.size(); i++)
 	{
 		XMStoreFloat4x4(&modelData[i].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
 	}
-
 	XMStoreFloat4x4(&skyboxConstantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera))));
 
 	//Directional Lighting
@@ -667,10 +675,7 @@ void Sample3DSceneRenderer::Render(void)
 	{
 		XMStoreFloat4x4(&modelData[i].m_constantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera2))));
 	}
-
-
 	XMStoreFloat4x4(&skyboxConstantBufferData.view, XMMatrixTranspose(XMMatrixInverse(nullptr, XMLoadFloat4x4(&m_camera2))));
-
 	m_deviceResources->GetD3DDeviceContext()->RSSetViewports(1, &viewports[1]);
 	Draw();
 }
@@ -769,11 +774,9 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		srand(time(NULL));
 
 		//DDS Loader
-		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"Diffuse_Knight_Cleansed.dds", (ID3D11Resource**)&modelTexture, &modelView);
-		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"BStrongoli_D_Sword.dds", (ID3D11Resource**)&modelTexture, &modelView);
-		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"dragonknight_hr-wind.dds", (ID3D11Resource**)&modelData[0].modelTexture, &modelData[0].modelView);
 
 		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"succubus-fire.dds", (ID3D11Resource**)&modelData[0].modelTexture, &modelData[0].modelView);
+		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"Normal_Fuzzy.dds", nullptr, &modelData[0].normalMapView);
 
 		//Load Model1
 		ObjForLoading object = LoadModel("succubus-fire.obj");
@@ -831,10 +834,15 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		srand(time(NULL));
 
 		//DDS Loader
-		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"dragonknight_hr-wind.dds", (ID3D11Resource**)&modelData[1].modelTexture, &modelData[1].modelView);
+		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"dragonknight_hr-wind.dds", (ID3D11Resource**)&modelData[1].modelTexture, &modelData[1].modelView);
+		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"asteroidTex.dds", (ID3D11Resource**)&modelData[1].modelTexture, &modelData[1].modelView);
+		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"asteroidNorm.dds", nullptr, &modelData[1].normalMapView);
+		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"T_Tree_D.dds", (ID3D11Resource**)&modelData[1].modelTexture, &modelData[1].modelView);
+
 
 		//Load Model1
-		ObjForLoading object = LoadModel("dragonknight_hr-wind.obj");
+		//ObjForLoading object = LoadModel("dragonknight_hr-wind.obj");
+		ObjForLoading object = LoadModel("tree.obj");
 
 		D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
 		vertexBufferData.pSysMem = object.vertices.data();
@@ -857,10 +865,12 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		srand(time(NULL));
 
 		//DDS Loader
-		HRESULT res = CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"archangel_dark.dds", (ID3D11Resource**)&modelData[2].modelTexture, &modelData[2].modelView);
+		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"archangel_dark.dds", (ID3D11Resource**)&modelData[2].modelTexture, &modelData[2].modelView);
+		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"Normal_Fuzzy.dds", nullptr, &modelData[2].normalMapView);
 
 		//Load Model1
 		ObjForLoading object = LoadModel("archangel_dark.obj");
+		//ObjForLoading object = LoadModel("wall.obj");
 
 		D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
 		vertexBufferData.pSysMem = object.vertices.data();

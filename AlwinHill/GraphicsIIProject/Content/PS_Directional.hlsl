@@ -1,22 +1,5 @@
-//struct PixelShaderInput
-//{
-//	float4 pos : SV_POSITION;
-//	float3 uv : UV;
-//	float3 normal : NORMAL;
-//};
-//
-//float3 gLightDir = (0.1, 2, 3);
-//float3 gAmbientColor = (0.2, 0.1, 0.01);
-//float4 main(PixelShaderInput input) : SV_TARGET
-//{
-//	float3 ldir = -normalize(gLightDir);
-//	float3 wnrm = normalize(input.normal);
-//	float3 result = saturate((dot(ldir, wnrm) * input.uv) + (input.uv * gAmbientColor));
-//
-//	return (result, 1);
-//}
-
-Texture2D shaderTexture : register(t1);;
+Texture2D shaderTexture : register(t1);
+Texture2D normalTex : register (t2);
 SamplerState SampleType : register(s1);
 
 cbuffer LightBuffer
@@ -49,6 +32,9 @@ float surfaceRatio;
 float4 color;
 float coneRatio = 0.8;
 float alpha;
+
+float4 normal = normalTex.Sample(SampleType, input.tex.xy);
+input.normal = float4(normalize(input.normal.xyz + normal.xyz), 1);
 
 //Directional Light
 if (lightType == 1)
@@ -89,7 +75,7 @@ if (lightType == 3)
 
 	lightDir = normalize(lightDirection - input.position);
 
-	surfaceRatio = clamp(dot(-lightDir, coneDir), 0, 4);
+	surfaceRatio = clamp(dot(-lightDir, coneDir), 0, 1);
 
 	spotFactor = (surfaceRatio > coneRatio) ? 1 : 0;
 

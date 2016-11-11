@@ -67,6 +67,18 @@
     <Image Include="mercury.dds">
       <Filter>Assets</Filter>
     </Image>
+    <Image Include="Normal_Fuzzy.dds">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="asteroidNorm.dds">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="asteroidTex.dds">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="T_Tree_D.dds">
+      <Filter>Assets</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -79,6 +91,9 @@
     <None Include="dragonknight_hr-wind.obj" />
     <None Include="succubus-fire.obj" />
     <None Include="archangel_dark.obj" />
+    <None Include="asteroid.obj" />
+    <None Include="wall.obj" />
+    <None Include="tree.obj" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Common\DDSTextureLoader.cpp">
