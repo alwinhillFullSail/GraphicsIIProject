@@ -92,7 +92,6 @@
     <None Include="succubus-fire.obj" />
     <None Include="archangel_dark.obj" />
     <None Include="asteroid.obj" />
-    <None Include="wall.obj" />
     <None Include="tree.obj" />
   </ItemGroup>
   <ItemGroup>
