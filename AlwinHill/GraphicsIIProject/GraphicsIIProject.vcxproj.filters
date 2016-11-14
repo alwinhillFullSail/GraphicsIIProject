@@ -58,9 +58,6 @@
     <Image Include="SkyboxOcean.dds">
       <Filter>Assets</Filter>
     </Image>
-    <Image Include="amanshome.dds">
-      <Filter>Assets</Filter>
-    </Image>
     <Image Include="archangel_dark.dds">
       <Filter>Assets</Filter>
     </Image>
@@ -79,6 +76,15 @@
     <Image Include="T_Tree_D.dds">
       <Filter>Assets</Filter>
     </Image>
+    <Image Include="amanshome.dds">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="barrel_diffuse.dds">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="barrel_normal.dds">
+      <Filter>Assets</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -93,6 +99,8 @@
     <None Include="archangel_dark.obj" />
     <None Include="asteroid.obj" />
     <None Include="tree.obj" />
+    <None Include="wall.obj" />
+    <None Include="barrel.obj" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Common\DDSTextureLoader.cpp">

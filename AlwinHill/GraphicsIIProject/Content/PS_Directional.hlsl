@@ -16,7 +16,6 @@ struct PixelInputType
 	float3 normal : NORMAL;
 };
 
-
 float4 main(PixelInputType input) : SV_TARGET
 {
 
@@ -30,68 +29,69 @@ float lightRatio;
 float spotFactor;
 float surfaceRatio;
 float4 color;
+float4 color1;
 float coneRatio = 0.8;
 float alpha;
 
 float4 normal = normalTex.Sample(SampleType, input.tex.xy);
 input.normal = float4(normalize(input.normal.xyz + normal.xyz), 1);
-
-//Directional Light
-if (lightType == 1)
-{
-	//// Sample the pixel color from the texture using the sampler at this texture coordinate location.
 	textureColor = shaderTexture.Sample(SampleType, input.tex);
-	alpha = textureColor.w;
-	// Invert the light direction for calculations.
-	lightDir = -lightDirection;
 
-	// Calculate the amount of light on this pixel.
-	lightIntensity = saturate(dot(input.normal, lightDir));
+	//Directional Light
+	if (lightType == 1)
+	{
+		//// Sample the pixel color from the texture using the sampler at this texture coordinate location.
+		alpha = textureColor.w;
+		// Invert the light direction for calculations.
+		lightDir = -lightDirection;
 
-	lightRatio = clamp(dot(-lightDirection, input.normal), 0, 1);
-	lightIntensity = 4.5;
+		// Calculate the amount of light on this pixel.
+		lightIntensity = saturate(dot(input.normal, lightDir));
 
-	color = lightRatio * diffuseColor * textureColor * lightIntensity;
-}
+		lightRatio = clamp(dot(-lightDirection, input.normal), 0, 1);
+		lightIntensity = 4.5;
 
-//Point Light
-if (lightType == 2)
-{
-	textureColor = shaderTexture.Sample(SampleType, input.tex);
-	alpha = textureColor.w;
+		color = lightRatio * diffuseColor * textureColor * lightIntensity;
+	}
 
-	lightDir = normalize(lightDirection - input.position);
+	//Point Light
+	if (lightType == 2)
+	{
+		alpha = textureColor.w;
 
-	lightRatio = clamp(dot(input.normal, lightDir), 0, 1);
+		//lightDir = normalize(lightDirection - input.position);
+		lightDir = -lightDirection;
 
-	color = lightRatio * diffuseColor * textureColor * 2.2;
-}
+		//lightRatio = clamp(dot(input.normal, lightDir), 0, 1);
+		lightRatio = saturate(dot(input.normal, lightDir));
+		color1 = diffuseColor * lightRatio;
 
-//Spot Light
-if (lightType == 3)
-{
-	textureColor = shaderTexture.Sample(SampleType, input.tex);
-	alpha = textureColor.w;
+		color = saturate(color1) /** lightRatio*/ /** diffuseColor*/ * textureColor;
+	}
 
-	lightDir = normalize(lightDirection - input.position);
+	//Spot Light
+	if (lightType == 3)
+	{
+		alpha = textureColor.w;
 
-	surfaceRatio = clamp(dot(-lightDir, coneDir), 0, 1);
+		lightDir = normalize(lightDirection - input.position);
 
-	spotFactor = (surfaceRatio > coneRatio) ? 1 : 0;
+		surfaceRatio = clamp(dot(-lightDir, coneDir), 0, 1);
 
-	lightRatio = clamp(dot(lightDirection, input.normal), 0, 1);
+		spotFactor = (surfaceRatio > coneRatio) ? 1 : 0;
 
-	color = spotFactor * lightRatio * diffuseColor * textureColor * 1.7f;
-}
+		lightRatio = clamp(dot(lightDirection, input.normal), 0, 1);
 
-//Ambient Light
-if (lightType == 4)
-{
-	textureColor = shaderTexture.Sample(SampleType, input.tex);
-	alpha = textureColor.w;
+		color = spotFactor * lightRatio * diffuseColor * textureColor * 1.7f;
+	}
 
-	color = diffuseColor * textureColor * 0.8f;
-}
+	//Ambient Light
+	if (lightType == 4)
+	{
+		alpha = textureColor.w;
 
-return float4(color.xyz, alpha);
+		color = diffuseColor * textureColor * 0.8f;
+	}
+
+	return float4(color.xyz, alpha);
 }

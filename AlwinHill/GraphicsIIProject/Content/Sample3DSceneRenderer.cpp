@@ -36,7 +36,7 @@ Sample3DSceneRenderer::Sample3DSceneRenderer(const std::shared_ptr<DX::DeviceRes
 
 
 	//ModelData for each model loaded... increase everytime new model is added
-	int resize = 3;
+	int resize = 5;
 	modelData.resize(resize);
 	//++resize;
 	m_instanceBuffer = nullptr;
@@ -242,10 +242,10 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources(void)
 	XMStoreFloat4x4(&skyboxConstantBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
 
 	//Projection for Model1
-	XMStoreFloat4x4(&modelData[0].m_constantBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
-	XMStoreFloat4x4(&modelData[1].m_constantBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
-	XMStoreFloat4x4(&modelData[2].m_constantBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
-
+	for (size_t i = 0; i < modelData.size(); i++)
+	{
+		XMStoreFloat4x4(&modelData[i].m_constantBufferData.projection, XMMatrixTranspose(perspectiveMatrix * orientationMatrix));
+	}
 
 	// Eye is at (0,0.7,1.5), looking at point (0,-0.1,0) with the up-vector along the y-axis.
 	static const XMVECTORF32 eye = { 0.0f, 0.7f, -2.5f, 0.0f };
@@ -253,7 +253,7 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources(void)
 	static const XMVECTORF32 up = { 0.0f, 1.0f, 0.0f, 0.0f };
 
 	//Viewport 2
-	static const XMVECTORF32 eye2 = { 0.0f, 4.7f, 7.5f, 0.0f };
+	static const XMVECTORF32 eye2 = { 0.0f, 4.7f, 10.5f, 0.0f };
 	static const XMVECTORF32 at2 = { 0.0f, -0.1f, 0.0f, 0.0f };
 	static const XMVECTORF32 up2 = { 0.0f, 1.0f, 0.0f, 0.0f };
 
@@ -268,9 +268,11 @@ void Sample3DSceneRenderer::CreateWindowSizeDependentResources(void)
 
 
 	//Models
-	XMStoreFloat4x4(&modelData[0].m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
-	XMStoreFloat4x4(&modelData[1].m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
-	XMStoreFloat4x4(&modelData[2].m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
+	for (size_t i = 0; i < modelData.size(); i++)
+	{
+		XMStoreFloat4x4(&modelData[i].m_constantBufferData.view, XMMatrixTranspose(XMMatrixLookAtLH(eye, at, up)));
+	}
+
 
 }
 
@@ -315,10 +317,13 @@ void Sample3DSceneRenderer::Rotate(float radians)
 
 	//Translate MODEL 1 
 	XMStoreFloat4x4(&modelData[0].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(0, 0, -2.5) * XMMatrixRotationY(3.142)));
-	XMStoreFloat4x4(&modelData[1].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-2.5, 0, 0.5) * XMMatrixRotationY(3.142)) * XMMatrixScaling(10, 10, 10));
+	XMStoreFloat4x4(&modelData[1].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-2.5, 0, 0.5) * XMMatrixRotationY(3.142)) * XMMatrixScaling(100, 100, 100));
 	XMStoreFloat4x4(&modelData[2].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(2.5, 0, 0.5) * XMMatrixRotationY(3.142)));
+	XMStoreFloat4x4(&modelData[3].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(4.5, 0, 3.5) * XMMatrixRotationY(3.142)));
+	XMStoreFloat4x4(&modelData[4].m_constantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(-4.5, 0, 3.5) * XMMatrixRotationY(3.142)) * XMMatrixScaling(10, 10, 10));
 
-	//Skybox
+
+	//Skyboxsa
 	//XMStoreFloat4x4(&skyboxConstantBufferData.model, XMMatrixTranspose(XMMatrixTranslation(0, 3, 0) * XMMatrixRotationY(radians)));
 
 }
@@ -470,7 +475,71 @@ void Sample3DSceneRenderer::StopTracking(void)
 	m_tracking = false;
 }
 
-void Sample3DSceneRenderer::Draw(/*int lightType*/)
+//Spot Light
+void DX11UWA::Sample3DSceneRenderer::SpotLight()
+{
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	unsigned int bufferNumber;
+	LightBufferType* dataPtr2;
+	m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	dataPtr2 = (LightBufferType*)mappedResource.pData;
+	dataPtr2->diffuseColor = XMFLOAT4(0.2f, 0.5f, 0.4f, 1.0f);
+	dataPtr2->lightDirection = XMFLOAT3(0.0f, 5.0f, 1.0f);
+	dataPtr2->lightType = 3.0f;
+	m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
+	bufferNumber = 0;
+	m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
+}
+
+//Point Light
+void DX11UWA::Sample3DSceneRenderer::PointLight()
+{
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	unsigned int bufferNumber;
+	LightBufferType* dataPtr2;
+	m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	dataPtr2 = (LightBufferType*)mappedResource.pData;
+	dataPtr2->diffuseColor = XMFLOAT4(0.8f, 1.0f, 0.8f, 1.0f);
+	dataPtr2->lightDirection = DirLightDir; //XMFLOAT3(-15.0f, -15.0f, 2.0f);
+	dataPtr2->lightType = 2.0f;
+	m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
+	bufferNumber = 0;
+	m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
+}
+
+//Directional Light
+void DX11UWA::Sample3DSceneRenderer::DirectionalLight()
+{
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	unsigned int bufferNumber;
+	LightBufferType* dataPtr2;
+	m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	dataPtr2 = (LightBufferType*)mappedResource.pData;
+	dataPtr2->diffuseColor = XMFLOAT4(DirLightDir.x, DirLightDir.y, DirLightDir.z, 1.0f);
+	dataPtr2->lightDirection = DirLightDir;
+	dataPtr2->lightType = 1.0f;
+	m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
+	bufferNumber = 0;
+	m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
+}
+
+//Ambient Light
+void DX11UWA::Sample3DSceneRenderer::AmbientLight()
+{
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	unsigned int bufferNumber;
+	LightBufferType* dataPtr2;
+	m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	dataPtr2 = (LightBufferType*)mappedResource.pData;
+	dataPtr2->diffuseColor = XMFLOAT4(0.4f, 0.4f, 0.2f, 1.0f);
+	dataPtr2->lightDirection = XMFLOAT3(0.0f, 5.0f, 1.0f);
+	dataPtr2->lightType = 4.0f;
+	m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
+	bufferNumber = 0;
+	m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
+}
+
+void Sample3DSceneRenderer::Draw()
 {
 	auto context = m_deviceResources->GetD3DDeviceContext();
 
@@ -500,8 +569,8 @@ void Sample3DSceneRenderer::Draw(/*int lightType*/)
 	//Loading textures for models
 	for (size_t i = 0; i < modelData.size(); i++)
 	{
-		ID3D11ShaderResourceView *texViews2[] = { { modelData[i].modelView }, {modelData[i].normalMapView }};
-		context->PSSetShaderResources(1, 1, texViews2);
+		ID3D11ShaderResourceView *texViews2[] = { { modelData[i].modelView }, {modelData[i].normalMapView } };
+		context->PSSetShaderResources(1, 2, texViews2);
 
 		context->UpdateSubresource1(modelConstantBuffer.Get(), 0, NULL, &modelData[i].m_constantBufferData, 0, 0, 0);
 		UINT stride3 = sizeof(XMFLOAT3) * 3;
@@ -568,63 +637,30 @@ void Sample3DSceneRenderer::Draw(/*int lightType*/)
 	context->PSSetShader(skyboxPixelShader.Get(), nullptr, 0);
 	context->DrawIndexed(m_skyboxIndexCount, 0, 0);
 
+	if (dir && !point && !spot && !ambient)
+	{
+		DirectionalLight();
+	}
 
-	if (dir)
+	if (point && !dir && !spot && !ambient)
 	{
-		D3D11_MAPPED_SUBRESOURCE mappedResource;
-		unsigned int bufferNumber;
-		LightBufferType* dataPtr2;
-		m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-		dataPtr2 = (LightBufferType*)mappedResource.pData;
-		dataPtr2->diffuseColor = XMFLOAT4(DirLightDir.x, DirLightDir.y, DirLightDir.z, 1.0f)/*XMFLOAT4(0.2f, 1.0f, 0.2f, 1.0f)*/;
-		dataPtr2->lightDirection = DirLightDir;
-		dataPtr2->lightType = 1.0f;
-		m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
-		bufferNumber = 0;
-		m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
+		PointLight();
 	}
-	if (point)
+
+	if (spot && !dir && !point && !ambient)
 	{
-		D3D11_MAPPED_SUBRESOURCE mappedResource;
-		unsigned int bufferNumber;
-		LightBufferType* dataPtr2;
-		m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-		dataPtr2 = (LightBufferType*)mappedResource.pData;
-		dataPtr2->diffuseColor = XMFLOAT4(0.8f, 1.0f, 0.8f, 1.0f);
-		dataPtr2->lightDirection = XMFLOAT3(-15.0f, -15.0f, 2.0f);
-		dataPtr2->lightType = 2.0f;
-		m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
-		bufferNumber = 0;
-		m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
-	}
-	if (spot)
-	{
-		D3D11_MAPPED_SUBRESOURCE mappedResource;
-		unsigned int bufferNumber;
-		LightBufferType* dataPtr2;
-		m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-		dataPtr2 = (LightBufferType*)mappedResource.pData;
-		dataPtr2->diffuseColor = XMFLOAT4(0.2f, 0.5f, 0.4f, 1.0f);
-		dataPtr2->lightDirection = XMFLOAT3(0.0f, 5.0f, 1.0f);
-		dataPtr2->lightType = 3.0f;
-		m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
-		bufferNumber = 0;
-		m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
+		SpotLight();
 	}
 
 	if (!spot && !dir && !point)
 	{
-		D3D11_MAPPED_SUBRESOURCE mappedResource;
-		unsigned int bufferNumber;
-		LightBufferType* dataPtr2;
-		m_deviceResources->GetD3DDeviceContext()->Map(m_lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-		dataPtr2 = (LightBufferType*)mappedResource.pData;
-		dataPtr2->diffuseColor = XMFLOAT4(0.4f, 0.4f, 0.2f, 1.0f);
-		dataPtr2->lightDirection = XMFLOAT3(0.0f, 5.0f, 1.0f);
-		dataPtr2->lightType = 4.0f;
-		m_deviceResources->GetD3DDeviceContext()->Unmap(m_lightBuffer, 0);
-		bufferNumber = 0;
-		m_deviceResources->GetD3DDeviceContext()->PSSetConstantBuffers(bufferNumber, 1, &m_lightBuffer);
+		AmbientLight();
+	}
+
+	if (ambient && dir)
+	{
+		DirectionalLight();
+		//AmbientLight();
 	}
 }
 
@@ -649,20 +685,40 @@ void Sample3DSceneRenderer::Render(void)
 	//Directional Lighting
 	if (m_kbuttons['1'])
 	{
-		dir = !dir;
+		dir = true;
 		point = false;
 		spot = false;
+		ambient = false;
 	}
+	//Point Light
 	if (m_kbuttons['2'])
 	{
-		point = !point;
+		point = true;
 		dir = false;
 		spot = false;
+		ambient = false;
 	}
+	//Spot Light
 	if (m_kbuttons['3'])
 	{
-		spot = !spot;
+		spot = true;
 		dir = false;
+		point = false;
+		ambient = false;
+	}
+	//Ambient Light
+	if (m_kbuttons['4'])
+	{
+		spot = false;
+		dir = false;
+		point = false;
+	}
+	//Directional & Point
+	if (m_kbuttons['5'])
+	{
+		dir = true;
+		ambient = true;
+		spot = false;
 		point = false;
 	}
 
@@ -776,7 +832,6 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		//DDS Loader
 
 		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"succubus-fire.dds", (ID3D11Resource**)&modelData[0].modelTexture, &modelData[0].modelView);
-		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"Normal_Fuzzy.dds", nullptr, &modelData[0].normalMapView);
 
 		//Load Model1
 		ObjForLoading object = LoadModel("succubus-fire.obj");
@@ -834,14 +889,10 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		srand(time(NULL));
 
 		//DDS Loader
-		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"dragonknight_hr-wind.dds", (ID3D11Resource**)&modelData[1].modelTexture, &modelData[1].modelView);
-		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"asteroidTex.dds", (ID3D11Resource**)&modelData[1].modelTexture, &modelData[1].modelView);
-		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"asteroidNorm.dds", nullptr, &modelData[1].normalMapView);
 		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"T_Tree_D.dds", (ID3D11Resource**)&modelData[1].modelTexture, &modelData[1].modelView);
 
 
 		//Load Model1
-		//ObjForLoading object = LoadModel("dragonknight_hr-wind.obj");
 		ObjForLoading object = LoadModel("tree.obj");
 
 		D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
@@ -866,11 +917,9 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 
 		//DDS Loader
 		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"archangel_dark.dds", (ID3D11Resource**)&modelData[2].modelTexture, &modelData[2].modelView);
-		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"Normal_Fuzzy.dds", nullptr, &modelData[2].normalMapView);
 
 		//Load Model1
 		ObjForLoading object = LoadModel("archangel_dark.obj");
-		//ObjForLoading object = LoadModel("wall.obj");
 
 		D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
 		vertexBufferData.pSysMem = object.vertices.data();
@@ -888,6 +937,61 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&indexBufferDesc, &indexBufferData, &modelData[2].m_indexBuffer));
 	});
 
+	auto createModel4 = (createModelVS && createModelPS).then([this]()
+	{
+		srand(time(NULL));
+
+		//DDS Loader
+		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"dragonknight_hr-wind.dds", (ID3D11Resource**)&modelData[3].modelTexture, &modelData[3].modelView);
+
+
+		//Load Model1
+		ObjForLoading object = LoadModel("dragonknight_hr-wind.obj");
+		//ObjForLoading object = LoadModel("wall.obj");
+
+		D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
+		vertexBufferData.pSysMem = object.vertices.data();
+		vertexBufferData.SysMemPitch = 0;
+		vertexBufferData.SysMemSlicePitch = 0;
+		CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(XMFLOAT3) * object.vertices.size(), D3D11_BIND_VERTEX_BUFFER);
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&vertexBufferDesc, &vertexBufferData, &modelData[3].m_vertexBuffer));
+
+		modelData[3].m_indexCount = object.indices.size();
+		D3D11_SUBRESOURCE_DATA indexBufferData = { 0 };
+		indexBufferData.pSysMem = object.indices.data();
+		indexBufferData.SysMemPitch = 0;
+		indexBufferData.SysMemSlicePitch = 0;
+		CD3D11_BUFFER_DESC indexBufferDesc(sizeof(unsigned short) * object.indices.size(), D3D11_BIND_INDEX_BUFFER);
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&indexBufferDesc, &indexBufferData, &modelData[3].m_indexBuffer));
+	});
+
+	auto createModel5 = (createModelVS && createModelPS).then([this]()
+	{
+		srand(time(NULL));
+
+		//DDS Loader
+		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"barrel_diffuse.dds", (ID3D11Resource**)&modelData[4].modelTexture, &modelData[4].modelView);
+		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"barrel_normal.dds", nullptr, &modelData[4].normalMapView);
+
+
+		//Load Model1
+		ObjForLoading object = LoadModel("barrel.obj");
+
+		D3D11_SUBRESOURCE_DATA vertexBufferData = { 0 };
+		vertexBufferData.pSysMem = object.vertices.data();
+		vertexBufferData.SysMemPitch = 0;
+		vertexBufferData.SysMemSlicePitch = 0;
+		CD3D11_BUFFER_DESC vertexBufferDesc(sizeof(XMFLOAT3) * object.vertices.size(), D3D11_BIND_VERTEX_BUFFER);
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&vertexBufferDesc, &vertexBufferData, &modelData[4].m_vertexBuffer));
+
+		modelData[4].m_indexCount = object.indices.size();
+		D3D11_SUBRESOURCE_DATA indexBufferData = { 0 };
+		indexBufferData.pSysMem = object.indices.data();
+		indexBufferData.SysMemPitch = 0;
+		indexBufferData.SysMemSlicePitch = 0;
+		CD3D11_BUFFER_DESC indexBufferDesc(sizeof(unsigned short) * object.indices.size(), D3D11_BIND_INDEX_BUFFER);
+		DX::ThrowIfFailed(m_deviceResources->GetD3DDevice()->CreateBuffer(&indexBufferDesc, &indexBufferData, &modelData[4].m_indexBuffer));
+	});
 
 	auto createCubeTask = (createPSTask && createVSTask).then([this]()
 	{
@@ -946,7 +1050,9 @@ void Sample3DSceneRenderer::CreateDeviceDependentResources(void)
 	//Creating the skybox
 	auto skyBox = (createSkyboxPS && createSkyboxVS).then([this]()
 	{
-		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"mercury.dds", (ID3D11Resource**)&skyboxTexture, &skyboxModelView);
+		//CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"mercury.dds", (ID3D11Resource**)&skyboxTexture, &skyboxModelView);
+		CreateDDSTextureFromFile(m_deviceResources->GetD3DDevice(), L"amanshome.dds", (ID3D11Resource**)&skyboxTexture, &skyboxModelView);
+
 		XMFLOAT3 skyOffset = XMFLOAT3(1, 1, 1);
 
 		static const VertexPositionColor skyboxVertices[] =

@@ -11,7 +11,5 @@ SamplerState envFilter : register(s1);
 
 float4 main(PixelShaderInput input) : SV_TARGET
 {
-	//return env.Sample(envFilter, icolor);
 	return env.Sample(envFilter, input.uv.xy);
-	//return float4(input.uv, 1.0f);
 }
