@@ -1,0 +1,4 @@
+Controls:
+1 = Directional Light
+2 = Point Light
+3 = Spot Light
