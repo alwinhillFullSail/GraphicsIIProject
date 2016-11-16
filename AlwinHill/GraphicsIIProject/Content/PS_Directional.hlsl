@@ -6,7 +6,8 @@ cbuffer LightBuffer
 {
 	float4 diffuseColor;
 	float3 lightDirection;
-	float lightType;
+	float padding;
+	float4 lightType;
 };
 
 struct PixelInputType
@@ -14,15 +15,17 @@ struct PixelInputType
 	float4 position : SV_POSITION;
 	float2 tex : UV;
 	float3 normal : NORMAL;
+	float3 worldPos : POSITION;
 };
 
 float4 main(PixelInputType input) : SV_TARGET
 {
 
-float4 textureColor;
+	float4 textureColor;
 float3 lightDir;
-//float3 coneDir = float3(-1, 3.0f, 1.0f);
-float3 coneDir = float3(0.0f, 2.0f, 1.0f);
+float3 coneDir = float3(lightDirection.x, -1.5f, -0.1f);
+float3 spotLightPosition = float3(-3, 5, -3);
+float3 pointLightPosition = float3(-3, 1, -1);
 
 float lightIntensity;
 float lightRatio;
@@ -30,68 +33,72 @@ float spotFactor;
 float surfaceRatio;
 float4 color;
 float4 color1;
-float coneRatio = 0.8;
+float coneRatio = 0.98;
 float alpha;
+float4 attenuation;
 
 float4 normal = normalTex.Sample(SampleType, input.tex.xy);
 input.normal = float4(normalize(input.normal.xyz + normal.xyz), 1);
-	textureColor = shaderTexture.Sample(SampleType, input.tex);
+textureColor = shaderTexture.Sample(SampleType, input.tex);
 
-	//Directional Light
-	if (lightType == 1)
-	{
-		//// Sample the pixel color from the texture using the sampler at this texture coordinate location.
-		alpha = textureColor.w;
-		// Invert the light direction for calculations.
-		lightDir = -lightDirection;
+float3 cameraPos = lightType.yzw;
+float3 toCam = normalize(cameraPos - input.worldPos);
+float3 toLight = normalize(lightDirection - input.worldPos);
+float3 refVec = reflect(-toLight, input.normal);
+float specPow = clamp(dot(refVec, toCam),0, 1);
+specPow = pow(specPow, 128);
+float3 spec = diffuseColor * specPow * 1;
 
-		// Calculate the amount of light on this pixel.
-		lightIntensity = saturate(dot(input.normal, lightDir));
+//Directional Light
+if (lightType.x == 1)
+{
+	// Sample the pixel color from the texture using the sampler at this texture coordinate location.
+	alpha = textureColor.w;
+	// Invert the light direction for calculations.
+	lightDir = -lightDirection;
 
-		lightRatio = clamp(dot(-lightDirection, input.normal), 0, 1);
-		lightIntensity = 4.5;
+	// Calculate the amount of light on this pixel.
 
-		color = lightRatio * diffuseColor * textureColor * lightIntensity;
-	}
+	lightRatio = clamp(dot(normalize(lightDir), input.normal), 0, 1);
 
-	//Point Light
-	if (lightType == 2)
-	{
-		alpha = textureColor.w;
+	color = lightRatio * diffuseColor * textureColor;
+}
 
-		//lightDir = normalize(lightDirection - input.position);
-		lightDir = -lightDirection;
+//Point Light
+if (lightType.x == 2)
+{
+	alpha = textureColor.w;
 
-		//lightRatio = clamp(dot(input.normal, lightDir), 0, 1);
-		lightRatio = saturate(dot(input.normal, lightDir));
-		color1 = diffuseColor * lightRatio;
+	lightDir = normalize(lightDirection - input.worldPos);
 
-		color = saturate(color1) /** lightRatio*/ /** diffuseColor*/ * textureColor;
-	}
+	lightRatio = clamp(dot(input.normal, lightDir), 0, 1);
 
-	//Spot Light
-	if (lightType == 3)
-	{
-		alpha = textureColor.w;
+	color = diffuseColor * textureColor * lightRatio;
+}
 
-		lightDir = normalize(lightDirection - input.position);
+//Spot Light
+if (lightType.x == 3)
+{
+	alpha = textureColor.w;
 
-		surfaceRatio = clamp(dot(-lightDir, coneDir), 0, 1);
+	lightDir = normalize(spotLightPosition - input.worldPos);
 
-		spotFactor = (surfaceRatio > coneRatio) ? 1 : 0;
+	surfaceRatio = clamp(dot(-lightDir, normalize(coneDir)), 0, 1);
 
-		lightRatio = clamp(dot(lightDirection, input.normal), 0, 1);
+	spotFactor = (surfaceRatio > coneRatio) ? 1 : 0;
 
-		color = spotFactor * lightRatio * diffuseColor * textureColor * 1.7f;
-	}
+	lightRatio = clamp(dot(normalize(lightDir), input.normal), 0, 1);
 
-	//Ambient Light
-	if (lightType == 4)
-	{
-		alpha = textureColor.w;
+	color = spotFactor * lightRatio * diffuseColor * textureColor;
+}
 
-		color = diffuseColor * textureColor * 0.8f;
-	}
+//Ambient Light
+if (lightType.x == 4)
+{
+	alpha = textureColor.w;
 
-	return float4(color.xyz, alpha);
+	color = diffuseColor * textureColor * 0.8f;
+}
+
+return float4(saturate(color.xyz + spec), alpha);
 }

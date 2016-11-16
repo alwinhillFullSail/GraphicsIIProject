@@ -202,6 +202,8 @@
     <Image Include="barrel_diffuse.dds" />
     <Image Include="barrel_normal.dds" />
     <Image Include="BStrongoli_D_Sword.dds" />
+    <Image Include="cobblestone_normal.dds" />
+    <Image Include="coblestone_tex.dds" />
     <Image Include="Diffuse_Knight_Cleansed.dds" />
     <Image Include="dragonknight_hr-wind.dds" />
     <Image Include="mercury.dds" />
@@ -365,6 +367,20 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="barrel.obj">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cobbleS.obj">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cobbleStone.obj">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <DeploymentContent Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</DeploymentContent>
       <FileType>Document</FileType>

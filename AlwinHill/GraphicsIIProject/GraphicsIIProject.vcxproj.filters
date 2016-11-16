@@ -85,6 +85,12 @@
     <Image Include="barrel_normal.dds">
       <Filter>Assets</Filter>
     </Image>
+    <Image Include="cobblestone_normal.dds">
+      <Filter>Assets</Filter>
+    </Image>
+    <Image Include="coblestone_tex.dds">
+      <Filter>Assets</Filter>
+    </Image>
   </ItemGroup>
   <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
@@ -101,6 +107,8 @@
     <None Include="tree.obj" />
     <None Include="wall.obj" />
     <None Include="barrel.obj" />
+    <None Include="cobbleS.obj" />
+    <None Include="cobbleStone.obj" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Common\DDSTextureLoader.cpp">

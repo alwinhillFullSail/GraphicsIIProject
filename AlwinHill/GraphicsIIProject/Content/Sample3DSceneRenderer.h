@@ -23,7 +23,7 @@ namespace DX11UWA
 		std::vector<XMFLOAT3> normals;
 	};
 
-	//stores the info for instamced objects
+	//stores the info for instanced objects
 	struct InstanceType
 	{
 		XMFLOAT3 position;
@@ -57,6 +57,7 @@ namespace DX11UWA
 		void PointLight();
 		void DirectionalLight();
 		void AmbientLight();
+		void CreateModel();
 
 		//CComPtr<ID3D11Texture2D> diffuseTexture;
 		CComPtr<ID3D11Texture2D> modelTexture;
@@ -97,35 +98,25 @@ namespace DX11UWA
 		ModelViewProjectionConstantBuffer			m_constantBufferData;
 		uint32	m_indexCount;
 
-		//For loading models
-		struct MODELDATA
-		{
-			Microsoft::WRL::ComPtr<ID3D11Buffer>		m_vertexBuffer;
-			Microsoft::WRL::ComPtr<ID3D11Buffer>		m_indexBuffer;
-			CComPtr<ID3D11ShaderResourceView>			modelView;
-			CComPtr<ID3D11ShaderResourceView>			normalMapView;
-
-			// System resources for cube geometry.
-			ModelViewProjectionConstantBuffer			m_constantBufferData;
-			uint32										m_indexCount;
-			CComPtr<ID3D11Texture2D>					modelTexture;
-		};
-
-		std::vector<MODELDATA> modelData;
-
 		//Shaders for models excluding the CUBE
 		Microsoft::WRL::ComPtr<ID3D11VertexShader>	modelVertexShader;
+		Microsoft::WRL::ComPtr<ID3D11VertexShader>	modelVertexShader2;
 		Microsoft::WRL::ComPtr<ID3D11PixelShader>	modelPixelShader;
 		Microsoft::WRL::ComPtr<ID3D11InputLayout>	modelInputLayout;
+		Microsoft::WRL::ComPtr<ID3D11InputLayout>	modelInputLayout2;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		modelConstantBuffer;
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		modelConstantBuffer2;
 		Microsoft::WRL::ComPtr<ID3D11BlendState>	blendState;
 
 
 		//Skybox Variables
 		int											m_instanceCount;
+		int											m_instanceCount2;
+
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_instanceBuffer;
 		Microsoft::WRL::ComPtr<ID3D11Buffer>		skyboxConstantBuffer;
 
+		Microsoft::WRL::ComPtr<ID3D11Buffer>		m_instanceBuffer1;
 
 		//For Lighting
 		ID3D11SamplerState *m_sampleState;
@@ -137,10 +128,30 @@ namespace DX11UWA
 		{
 			XMFLOAT4 diffuseColor;
 			XMFLOAT3 lightDirection;
-			float lightType;  // Added extra padding so structure is a multiple of 16 for CreateBuffer function requirements.
+			float padding;
+			XMFLOAT4 lightType; //x = lightType, y,z,w = cameraPos;  
 		};
+
 		XMFLOAT3 DirLightDir;
+		XMFLOAT3 spotLightPos;
 		bool dir = false, spot = false, point = false; bool ambient = false;
+
+		//For loading models
+		struct MODELDATA
+		{
+			Microsoft::WRL::ComPtr<ID3D11Buffer>	m_vertexBuffer;
+			Microsoft::WRL::ComPtr<ID3D11Buffer>	m_indexBuffer;
+			CComPtr<ID3D11ShaderResourceView>		modelView;
+			CComPtr<ID3D11ShaderResourceView>		normalMapView;
+
+			// System resources for cube geometry.
+			ModelViewProjectionConstantBuffer		m_constantBufferData;
+			uint32									m_indexCount;
+			CComPtr<ID3D11Texture2D>				modelTexture;
+		};
+
+		std::vector<MODELDATA> modelData;
+
 
 		//For multiple viewports
 		D3D11_VIEWPORT viewports[2];
@@ -161,7 +172,5 @@ namespace DX11UWA
 		DirectX::XMFLOAT4X4 m_camera2;
 
 	};
-
-
 }
 
